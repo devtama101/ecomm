@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useCartStore } from "@/store/cartStore";
+import { useUser, useClerk } from "@clerk/nextjs";
 
 interface Variant {
   id: string;
   size: string;
   color: string;
   stock: number;
+  imageUrl?: string | null;
 }
 
 interface ProductImage {
@@ -27,9 +30,20 @@ interface Product {
 }
 
 export default function ProductDetailClient({ product }: { product: Product }) {
+  const { user } = useUser();
+  const { openSignIn } = useClerk();
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
-  const [activeImage, setActiveImage] = useState(product.images[0]?.url || product.imageUrl);
+  // Get all unique images from variants + main product image
+  const gallery = Array.from(new Set([
+    product.imageUrl,
+    ...product.variants.map(v => v.imageUrl).filter(Boolean)
+  ])).filter(Boolean) as string[];
+
+  const [activeImage, setActiveImage] = useState(gallery[0] || product.imageUrl);
+  const [addedFeedback, setAddedFeedback] = useState(false);
+
+  const addItem = useCartStore((s) => s.addItem);
 
   // Group variants by color and size
   const colors = Array.from(new Set(product.variants.map(v => v.color)));
@@ -41,6 +55,38 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   );
 
   const isOutOfStock = selectedVariant ? selectedVariant.stock === 0 : false;
+
+  // Auto-switch image when variant is selected
+  const [lastSelectedVariantId, setLastSelectedVariantId] = useState<string | null>(null);
+  
+  if (selectedVariant && selectedVariant.id !== lastSelectedVariantId) {
+    if (selectedVariant.imageUrl) {
+      setActiveImage(selectedVariant.imageUrl);
+    }
+    setLastSelectedVariantId(selectedVariant.id);
+  }
+
+  const handleAddToCart = () => {
+    if (!user) {
+      openSignIn({ forceRedirectUrl: window.location.href });
+      return;
+    }
+
+    if (!selectedVariant || isOutOfStock) return;
+
+    addItem({
+      productId: product.id,
+      variantId: selectedVariant.id,
+      name: product.name,
+      size: selectedVariant.size,
+      color: selectedVariant.color,
+      price: product.price,
+      imageUrl: selectedVariant.imageUrl || gallery[0] || product.imageUrl || "",
+    });
+
+    setAddedFeedback(true);
+    setTimeout(() => setAddedFeedback(false), 2000);
+  };
 
   return (
     <div className="grid lg:grid-cols-2 gap-16">
@@ -60,17 +106,17 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           )}
         </div>
         
-        {product.images.length > 1 && (
+        {gallery.length > 1 && (
           <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-            {product.images.sort((a, b) => a.order - b.order).map((img) => (
+            {gallery.map((imgUrl, idx) => (
               <button
-                key={img.id}
-                onClick={() => setActiveImage(img.url)}
+                key={idx}
+                onClick={() => setActiveImage(imgUrl)}
                 className={`flex-shrink-0 w-24 aspect-[4/5] rounded-xl overflow-hidden border-2 transition-all ${
-                  activeImage === img.url ? "border-stone-900 shadow-md" : "border-transparent opacity-70 hover:opacity-100"
+                  activeImage === imgUrl ? "border-stone-900 shadow-md" : "border-transparent opacity-70 hover:opacity-100"
                 }`}
               >
-                <img src={img.url} className="w-full h-full object-cover" alt="" />
+                <img src={imgUrl} className="w-full h-full object-cover" alt="" />
               </button>
             ))}
           </div>
@@ -151,18 +197,23 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           )}
 
           <button 
+            onClick={handleAddToCart}
             disabled={!selectedSize || !selectedColor || isOutOfStock}
             className={`w-full py-5 rounded-full text-lg font-black transition-all shadow-xl ${
-              !selectedSize || !selectedColor || isOutOfStock
-                ? "bg-stone-100 text-stone-400 cursor-not-allowed"
-                : "bg-stone-900 text-[#fdfbf7] hover:bg-stone-800 hover:-translate-y-1 active:translate-y-0"
+              addedFeedback
+                ? "bg-green-600 text-white"
+                : !selectedSize || !selectedColor || isOutOfStock
+                  ? "bg-stone-100 text-stone-400 cursor-not-allowed"
+                  : "bg-stone-900 text-[#fdfbf7] hover:bg-stone-800 hover:-translate-y-1 active:translate-y-0"
             }`}
           >
-            {!selectedSize || !selectedColor 
-              ? "Select Size & Color" 
-              : isOutOfStock 
-                ? "Out of Stock" 
-                : "Add to Cart"}
+            {addedFeedback
+              ? "✓ Added to Cart!"
+              : !selectedSize || !selectedColor 
+                ? "Select Size & Color" 
+                : isOutOfStock 
+                  ? "Out of Stock" 
+                  : "Add to Cart"}
           </button>
           
           <p className="text-center text-xs text-stone-400 font-medium pt-4">

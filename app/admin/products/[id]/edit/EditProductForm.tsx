@@ -129,27 +129,6 @@ export default function EditProductForm({ product }: { product: any }) {
               <p className="text-xs text-stone-500 mt-2">Leave empty to keep current image.</p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-2">Gallery Images</label>
-              {product.images && product.images.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {product.images.map((img: any, idx: number) => (
-                    <div key={idx} className="w-16 h-16 rounded-lg overflow-hidden border border-stone-100">
-                      <img src={img.url} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
-                    </div>
-                  ))}
-                </div>
-              )}
-              <input 
-                type="file" 
-                name="gallery" 
-                accept="image/*"
-                multiple
-                className="w-full bg-white border border-stone-200 rounded-xl px-4 py-3 text-stone-900 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-stone-100 file:text-stone-700 hover:file:bg-stone-200 file:cursor-pointer cursor-pointer"
-              />
-              <p className="text-xs text-stone-500 mt-2">Add more images to the product gallery.</p>
-            </div>
-
             <div className="flex items-center gap-3 pt-2">
               <input 
                 type="checkbox" 
@@ -213,6 +192,22 @@ export default function EditProductForm({ product }: { product: any }) {
                     className="w-full bg-white border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-900 focus:outline-none focus:border-orange-500 transition-colors"
                     min="0"
                   />
+                </div>
+                <div className="flex-1 min-w-[150px]">
+                  <label className="block text-[10px] uppercase tracking-wider font-bold text-stone-500 mb-1">Variant Image</label>
+                  <div className="flex items-center gap-2">
+                    {variant.imageUrl && (
+                      <div className="w-10 h-10 rounded border border-stone-200 overflow-hidden flex-shrink-0">
+                        <img src={variant.imageUrl} className="w-full h-full object-cover" alt="" />
+                      </div>
+                    )}
+                    <input 
+                      type="file"
+                      name={`variantImage_${index}`}
+                      accept="image/*"
+                      className="w-full text-[10px] text-stone-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-stone-200 file:text-stone-700 hover:file:bg-stone-300 cursor-pointer"
+                    />
+                  </div>
                 </div>
                 <button 
                   type="button"

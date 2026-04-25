@@ -14,8 +14,7 @@ export default async function EditProductPage({ params }: { params: { id: string
     .from("Product")
     .select(`
       *,
-      variants:ProductVariant(*),
-      images:ProductImage(*)
+      variants:ProductVariant(*)
     `)
     .eq("id", id)
     .single();

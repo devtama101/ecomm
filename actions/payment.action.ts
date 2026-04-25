@@ -128,3 +128,164 @@ export async function createSnapTransaction(productId: string) {
     };
   }
 }
+
+// ─── Multi-Item Cart Checkout ──────────────────────────────────
+
+interface CartCheckoutItem {
+  productId: string;
+  variantId: string;
+  quantity: number;
+}
+
+export async function createMultiItemTransaction(items: CartCheckoutItem[]) {
+  try {
+    const user = await currentUser();
+
+    if (!user) {
+      throw new Error("Unauthorized: Please sign in to continue.");
+    }
+
+    if (!items.length) {
+      throw new Error("Cart is empty.");
+    }
+
+    const clerkId = user.id;
+    const email = user.emailAddresses[0]?.emailAddress || "";
+
+    // 1. Sync User to our Database
+    let { data: dbUser, error: userError } = await supabase
+      .from("User")
+      .select("*")
+      .eq("clerkId", clerkId)
+      .single();
+
+    if (userError && userError.code !== "PGRST116") {
+      throw new Error("Database error finding user");
+    }
+
+    if (!dbUser) {
+      const { data: newUser, error: createError } = await supabase
+        .from("User")
+        .insert([{ clerkId, email }])
+        .select()
+        .single();
+
+      if (createError) throw new Error("Database error creating user");
+      dbUser = newUser;
+    }
+
+    // 2. Fetch all products from DB and validate prices
+    const productIds = [...new Set(items.map((i) => i.productId))];
+    const { data: products, error: prodError } = await supabase
+      .from("Product")
+      .select("*")
+      .in("id", productIds)
+      .eq("isActive", true);
+
+    if (prodError || !products) {
+      throw new Error("Failed to fetch products");
+    }
+
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    // Build Midtrans item_details and calculate total (server-side prices)
+    const itemDetails: any[] = [];
+    const orderItems: any[] = [];
+    let grossAmount = 0;
+
+    for (const item of items) {
+      const product = productMap.get(item.productId);
+      if (!product) {
+        throw new Error(`Product ${item.productId} not found or inactive.`);
+      }
+
+      const lineTotal = product.price * item.quantity;
+      grossAmount += lineTotal;
+
+      itemDetails.push({
+        id: item.variantId || product.id,
+        price: product.price,
+        quantity: item.quantity,
+        name: product.name.substring(0, 50),
+      });
+
+      orderItems.push({
+        productId: product.id,
+        variantId: item.variantId || null,
+        quantity: item.quantity,
+        price: product.price,
+      });
+    }
+
+    // 3. Generate unique order_id
+    const orderId = `ORDER-${Date.now()}-${uuidv4().substring(0, 8)}`;
+
+    // 4. Create Midtrans Transaction
+    const parameter = {
+      transaction_details: {
+        order_id: orderId,
+        gross_amount: grossAmount,
+      },
+      item_details: itemDetails,
+      customer_details: {
+        email: email,
+        first_name: user.firstName || "",
+        last_name: user.lastName || "",
+      },
+      callbacks: {
+        finish: "http://localhost:3000/dashboard",
+      },
+      usage_limit: 1,
+    };
+
+    const midtransTx = await snap.createTransaction(parameter);
+    const snapToken = midtransTx.token;
+
+    // 5. Save Order to database
+    const { data: order, error: orderError } = await supabase
+      .from("Order")
+      .insert([
+        {
+          orderId,
+          userId: dbUser.id,
+          total: grossAmount,
+          status: "pending",
+          snapToken,
+        },
+      ])
+      .select()
+      .single();
+
+    if (orderError || !order) {
+      console.error("Error creating order:", orderError);
+      throw new Error("Database error saving order");
+    }
+
+    // 6. Save OrderItems
+    const orderItemsToInsert = orderItems.map((oi) => ({
+      ...oi,
+      orderId: order.id,
+    }));
+
+    const { error: oiError } = await supabase
+      .from("OrderItem")
+      .insert(orderItemsToInsert);
+
+    if (oiError) {
+      console.error("Error creating order items:", oiError);
+      throw new Error("Database error saving order items");
+    }
+
+    return {
+      success: true,
+      snapToken,
+      orderId,
+    };
+  } catch (error: any) {
+    console.error("Multi-item Checkout Error:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to create payment transaction",
+    };
+  }
+}

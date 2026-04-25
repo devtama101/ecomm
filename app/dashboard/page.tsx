@@ -22,9 +22,13 @@ export default async function DashboardPage() {
   // Fetch dbUser
   const { data: dbUser } = await supabase
     .from("User")
-    .select("id")
+    .select("id, role")
     .eq("clerkId", userId)
     .single()
+
+  if (dbUser?.role === 'admin') {
+    redirect('/admin')
+  }
 
   let transactions: any[] = []
   if (dbUser) {

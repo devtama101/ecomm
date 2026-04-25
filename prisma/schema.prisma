@@ -15,8 +15,10 @@ model User {
   id           String        @id @default(uuid())
   clerkId      String        @unique
   email        String
+  role         String        @default("user") // "user" | "admin"
   createdAt    DateTime      @default(now())
   transactions Transaction[]
+  orders       Order[]
 }
 
 model Transaction {
@@ -48,6 +50,7 @@ model Product {
   images       ProductImage[]
   variants     ProductVariant[]
   transactions Transaction[]
+  orderItems   OrderItem[]
 }
 
 model ProductImage {
@@ -65,7 +68,35 @@ model ProductVariant {
   size      String // e.g. S, M, L, XL
   color     String // e.g. Black, Stone
   stock     Int    @default(0)
+  imageUrl  String?
 
   product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   transactions Transaction[]
+  orderItems   OrderItem[]
+}
+
+model Order {
+  id        String      @id @default(uuid())
+  orderId   String      @unique
+  userId    String
+  total     Int
+  status    String      @default("pending")
+  snapToken String?
+  createdAt DateTime    @default(now())
+
+  user  User        @relation(fields: [userId], references: [id])
+  items OrderItem[]
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String
+  variantId String?
+  quantity  Int
+  price     Int
+
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
 }

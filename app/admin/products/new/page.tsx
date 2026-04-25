@@ -107,18 +107,6 @@ export default function NewProductPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-2">Gallery Images</label>
-              <input 
-                type="file" 
-                name="gallery" 
-                accept="image/*"
-                multiple
-                className="w-full bg-white border border-stone-200 rounded-xl px-4 py-3 text-stone-900 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-stone-100 file:text-stone-700 hover:file:bg-stone-200 file:cursor-pointer cursor-pointer"
-              />
-              <p className="text-xs text-stone-500 mt-2">Select multiple images for the product gallery.</p>
-            </div>
-
             <div className="flex items-center gap-3 pt-2">
               <input 
                 type="checkbox" 
@@ -181,6 +169,15 @@ export default function NewProductPage() {
                     onChange={(e) => updateVariant(index, "stock", parseInt(e.target.value))}
                     className="w-full bg-white border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-900 focus:outline-none focus:border-orange-500 transition-colors"
                     min="0"
+                  />
+                </div>
+                <div className="flex-1 min-w-[150px]">
+                  <label className="block text-[10px] uppercase tracking-wider font-bold text-stone-500 mb-1">Variant Image</label>
+                  <input 
+                    type="file"
+                    name={`variantImage_${index}`}
+                    accept="image/*"
+                    className="w-full text-[10px] text-stone-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-stone-200 file:text-stone-700 hover:file:bg-stone-300 cursor-pointer"
                   />
                 </div>
                 <button 
