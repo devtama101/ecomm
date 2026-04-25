@@ -17,7 +17,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 );
 
-export async function createSnapTransaction(amount: number) {
+export async function createSnapTransaction(productId: string) {
   try {
     const user = await currentUser();
 
@@ -27,6 +27,20 @@ export async function createSnapTransaction(amount: number) {
 
     const clerkId = user.id;
     const email = user.emailAddresses[0]?.emailAddress || "";
+
+    // 0. Fetch Product to determine the secure price
+    const { data: product, error: productError } = await supabase
+      .from("Product")
+      .select("*")
+      .eq("id", productId)
+      .eq("isActive", true)
+      .single();
+
+    if (productError || !product) {
+      throw new Error("Product not found or inactive.");
+    }
+
+    const amount = product.price;
 
     // 1. Sync User to our Database
     let { data: dbUser, error: userError } = await supabase
@@ -63,6 +77,12 @@ export async function createSnapTransaction(amount: number) {
         order_id: orderId,
         gross_amount: amount,
       },
+      item_details: [{
+        id: product.id,
+        price: amount,
+        quantity: 1,
+        name: product.name.substring(0, 50),
+      }],
       customer_details: {
         email: email,
         first_name: user.firstName || "",
@@ -84,6 +104,7 @@ export async function createSnapTransaction(amount: number) {
       .insert([{
         orderId,
         userId: dbUser.id,
+        productId: product.id,
         amount,
         status: "pending",
         snapToken,

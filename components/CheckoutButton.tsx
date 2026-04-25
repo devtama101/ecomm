@@ -12,10 +12,11 @@ declare global {
 }
 
 interface CheckoutButtonProps {
-  amount: number;
+  productId: string;
+  price: number;
 }
 
-export default function CheckoutButton({ amount }: CheckoutButtonProps) {
+export default function CheckoutButton({ productId, price }: CheckoutButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { isSignedIn } = useAuth();
 
@@ -24,7 +25,7 @@ export default function CheckoutButton({ amount }: CheckoutButtonProps) {
 
     setIsLoading(true);
     try {
-      const result = await createSnapTransaction(amount);
+      const result = await createSnapTransaction(productId);
 
       if (result.success && result.snapToken) {
         window.snap.pay(result.snapToken, {
@@ -63,12 +64,12 @@ export default function CheckoutButton({ amount }: CheckoutButtonProps) {
       onClick={isSignedIn ? handleCheckout : undefined}
       disabled={isLoading}
       className={`
-        relative group px-8 py-4 bg-gradient-to-br from-indigo-600 to-violet-700 
-        hover:from-indigo-500 hover:to-violet-600
-        text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl 
+        w-full group px-6 py-4 bg-stone-900 
+        hover:bg-stone-800
+        text-[#fdfbf7] font-bold rounded-2xl shadow-lg hover:shadow-xl 
         transition-all duration-300 transform hover:-translate-y-1 active:scale-95
         disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
-        flex items-center gap-3 overflow-hidden
+        flex items-center justify-center gap-3 overflow-hidden relative
       `}
     >
       <div className="absolute inset-0 w-1/2 h-full skew-x-[-20deg] bg-white/10 group-hover:left-full transition-all duration-700 -left-full" />
@@ -85,14 +86,14 @@ export default function CheckoutButton({ amount }: CheckoutButtonProps) {
         <>
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
-            className="h-6 w-6 group-hover:rotate-12 transition-transform duration-300" 
+            className="h-5 w-5 group-hover:rotate-12 transition-transform duration-300" 
             fill="none" 
             viewBox="0 0 24 24" 
             stroke="currentColor"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
           </svg>
-          <span>Checkout Now (Rp {amount.toLocaleString()})</span>
+          <span>Buy Now</span>
         </>
       )}
     </button>

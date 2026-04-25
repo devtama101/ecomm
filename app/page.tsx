@@ -2,32 +2,57 @@ import CheckoutButton from "@/components/CheckoutButton";
 import { UserButton, SignInButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
+import { createClient } from "@supabase/supabase-js";
+import Image from "next/image";
 
 export default async function StorePage() {
   const { userId } = await auth();
 
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+  );
+
+  const { data: dbUser } = userId ? await supabase
+    .from("User")
+    .select("role")
+    .eq("clerkId", userId)
+    .single() : { data: null };
+
+  const isAdmin = dbUser?.role === "admin";
+
+  const { data: products } = await supabase
+    .from("Product")
+    .select("*")
+    .eq("isActive", true)
+    .order("price", { ascending: false });
+
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-[#fdfbf7] text-stone-800 selection:bg-orange-200">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-black/50 backdrop-blur-xl">
+      <nav className="fixed top-0 w-full z-50 border-b border-stone-200 bg-[#fdfbf7]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-black tracking-tighter bg-gradient-to-r from-indigo-500 to-violet-400 bg-clip-text text-transparent">
-            DEVTAMA
+          <Link href="/" className="text-2xl font-black tracking-tighter text-stone-900 uppercase">
+            Tama Arts
           </Link>
           
-          <div className="flex items-center gap-8 text-sm font-medium text-zinc-400">
+          <div className="flex items-center gap-8 text-sm font-medium text-stone-500">
             {userId ? (
               <>
-                <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
+                {isAdmin ? (
+                  <Link href="/admin" className="hover:text-stone-900 transition-colors">Dashboard</Link>
+                ) : (
+                  <Link href="/dashboard" className="hover:text-stone-900 transition-colors">Transactions</Link>
+                )}
                 <UserButton />
               </>
             ) : (
               <>
                 <SignInButton mode="modal" forceRedirectUrl="/dashboard">
-                  <button className="hover:text-white transition-colors">Dashboard</button>
+                  <button className="hover:text-stone-900 transition-colors">Transactions</button>
                 </SignInButton>
                 <SignInButton mode="modal" forceRedirectUrl="/">
-                  <button className="px-5 py-2.5 bg-white text-black rounded-full hover:bg-zinc-200 transition-all font-semibold">
+                  <button className="px-5 py-2.5 bg-stone-900 text-[#fdfbf7] rounded-full hover:bg-stone-800 transition-all font-semibold shadow-md">
                     Sign In
                   </button>
                 </SignInButton>
@@ -38,68 +63,62 @@ export default async function StorePage() {
       </nav>
 
       <main className="pt-32 pb-20 px-6">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           {/* Hero Section */}
-          <div className="text-center mb-20">
-            <h1 className="text-6xl md:text-7xl font-black tracking-tight mb-6 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent">
-              Premium E-Commerce Experience.
+          <div className="text-center mb-24 relative">
+            <h1 className="relative text-6xl md:text-8xl font-black tracking-tighter mb-8 text-stone-900 drop-shadow-sm">
+              Artisan Clothing <br className="hidden md:block"/> Collection.
             </h1>
-            <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
-              Secure payments powered by Midtrans. Test the integration with a single click.
+            <p className="relative text-xl text-stone-500 max-w-2xl mx-auto font-medium leading-relaxed">
+              Discover our curated selection of premium garments. Crafted with care, designed for life.
             </p>
           </div>
 
-          {/* Product Card */}
-          <div className="grid md:grid-cols-2 gap-12 items-center bg-zinc-900/50 rounded-[2.5rem] p-8 md:p-12 border border-white/5 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 blur-[100px] rounded-full -mr-20 -mt-20" />
+          {/* Product Grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
+            {products?.map((product) => (
+              <div key={product.id} className="bg-white rounded-3xl overflow-hidden border border-stone-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative group flex flex-col hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-1">
+                {/* Product Image */}
+                <div className="aspect-[4/5] w-full bg-stone-100 relative overflow-hidden">
+                  {product.imageUrl ? (
+                    <img 
+                      src={product.imageUrl} 
+                      alt={product.name} 
+                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700 ease-out" 
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-stone-300">
+                      <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="p-8 flex-grow flex flex-col">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold mb-2 text-stone-900 tracking-tight">{product.name}</h2>
+                    <p className="text-stone-500 leading-relaxed text-sm font-medium line-clamp-2">
+                      {product.description}
+                    </p>
+                  </div>
+
+                  <div className="mt-auto">
+                    <div className="mb-6">
+                      <p className="text-2xl font-black text-stone-900">Rp {product.price.toLocaleString()}</p>
+                    </div>
+                    <CheckoutButton productId={product.id} price={product.price} />
+                  </div>
+                </div>
+              </div>
+            ))}
             
-            <div className="relative aspect-square bg-gradient-to-br from-zinc-800 to-black rounded-3xl overflow-hidden border border-white/5 shadow-inner">
-              <div className="absolute inset-0 flex items-center justify-center group-hover:scale-110 transition-transform duration-700">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-48 w-48 text-indigo-500/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={0.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
+            {!products?.length && (
+              <div className="col-span-full py-24 text-center">
+                <h3 className="text-xl font-bold text-stone-900 mb-2">No items available</h3>
+                <p className="text-stone-500">Check back later for our new collection.</p>
               </div>
-              <div className="absolute bottom-8 left-8">
-                <span className="px-4 py-2 bg-indigo-500/20 backdrop-blur-md border border-indigo-500/30 rounded-full text-xs font-bold text-indigo-300 uppercase tracking-widest">
-                  Featured Product
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-8">
-              <div>
-                <h2 className="text-4xl font-bold mb-4">Elite Pro Smartwatch</h2>
-                <div className="flex items-center gap-2 mb-6">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <svg key={s} xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-400 fill-current" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                  <span className="text-zinc-500 text-sm ml-2">(128 Reviews)</span>
-                </div>
-                <p className="text-zinc-400 leading-relaxed">
-                  Experience the next generation of wearable technology. Minimalist design meets maximum performance. Precision crafted for those who demand excellence.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-6">
-                <div>
-                  <p className="text-sm text-zinc-500 uppercase tracking-widest font-bold mb-1">Price</p>
-                  <p className="text-3xl font-black">Rp 2,499,000</p>
-                </div>
-              </div>
-
-              <div className="pt-4">
-                <CheckoutButton amount={2499000} />
-              </div>
-              
-              <p className="text-xs text-zinc-600 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                Secure 256-bit SSL encrypted payment
-              </p>
-            </div>
+            )}
           </div>
         </div>
       </main>

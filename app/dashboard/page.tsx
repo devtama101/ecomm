@@ -30,7 +30,7 @@ export default async function DashboardPage() {
   if (dbUser) {
     const { data: txs } = await supabase
       .from("Transaction")
-      .select("*")
+      .select("*, Product(name)")
       .eq("userId", dbUser.id)
       .order('createdAt', { ascending: false })
       
@@ -40,14 +40,14 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white selection:bg-indigo-500/30">
-      <nav className="w-full border-b border-white/5 bg-black/50 backdrop-blur-xl">
+    <div className="min-h-screen bg-[#fdfbf7] text-stone-800 selection:bg-orange-500/30">
+      <nav className="w-full border-b border-stone-200 bg-white/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-black tracking-tighter bg-gradient-to-r from-indigo-500 to-violet-400 bg-clip-text text-transparent">
-            DEVTAMA
+          <Link href="/" className="text-2xl font-black tracking-tighter text-stone-900">
+            TAMA ARTS
           </Link>
           <div className="flex items-center gap-6">
-            <Link href="/" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">Store</Link>
+            <Link href="/" className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors">Store</Link>
             <UserButton />
           </div>
         </div>
@@ -55,18 +55,22 @@ export default async function DashboardPage() {
 
       <main className="max-w-5xl mx-auto px-6 py-12">
         <div className="mb-12">
-          <h1 className="text-3xl font-black mb-2">Order History</h1>
-          <p className="text-zinc-400">Welcome back, {user?.firstName}. View and manage your recent transactions.</p>
+          <h1 className="text-3xl font-black mb-2 text-stone-900">Order History</h1>
+          <p className="text-stone-500">Welcome back, {user?.firstName}. View and manage your recent transactions.</p>
         </div>
 
-        <div className="bg-zinc-900/50 rounded-3xl border border-white/5 overflow-hidden shadow-xl">
+        <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
           {transactions.length === 0 ? (
-            <div className="p-12 text-center text-zinc-500">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-              <p>You haven't made any purchases yet.</p>
-              <Link href="/" className="inline-block mt-6 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-full transition-all">
+            <div className="p-16 text-center flex flex-col items-center justify-center min-h-[400px]">
+              <div className="w-24 h-24 bg-stone-100 rounded-full flex items-center justify-center mb-6 border border-stone-200 relative">
+                <div className="absolute inset-0 bg-orange-500/5 blur-xl rounded-full" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-stone-400 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold mb-3 text-stone-900">No transactions yet</h3>
+              <p className="text-stone-500 max-w-sm mb-8">You haven't made any purchases. Explore our catalog and find something you love.</p>
+              <Link href="/" className="px-8 py-3 bg-stone-900 text-[#fdfbf7] font-bold rounded-full hover:bg-stone-800 transition-all hover:scale-105 shadow-sm">
                 Browse Store
               </Link>
             </div>
@@ -74,20 +78,24 @@ export default async function DashboardPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-white/5 bg-black/20 text-xs uppercase tracking-widest text-zinc-500">
+                  <tr className="border-b border-stone-200 bg-stone-50 text-xs uppercase tracking-widest text-stone-500">
                     <th className="px-6 py-4 font-semibold">Order ID</th>
+                    <th className="px-6 py-4 font-semibold">Product</th>
                     <th className="px-6 py-4 font-semibold">Date</th>
                     <th className="px-6 py-4 font-semibold">Amount</th>
                     <th className="px-6 py-4 font-semibold text-right">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-stone-100">
                   {transactions.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="px-6 py-5 font-mono text-sm text-zinc-300">
+                    <tr key={tx.id} className="hover:bg-stone-50 transition-colors">
+                      <td className="px-6 py-5 font-mono text-sm text-stone-700">
                         {tx.orderId}
                       </td>
-                      <td className="px-6 py-5 text-sm text-zinc-400">
+                      <td className="px-6 py-5 text-sm font-medium text-stone-900">
+                        {tx.Product?.name || "Unknown Product"}
+                      </td>
+                      <td className="px-6 py-5 text-sm text-stone-500">
                         {new Date(tx.createdAt).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'short',
@@ -96,19 +104,21 @@ export default async function DashboardPage() {
                           minute: '2-digit'
                         })}
                       </td>
-                      <td className="px-6 py-5 text-sm font-medium">
+                      <td className="px-6 py-5 text-sm font-medium text-stone-900">
                         Rp {tx.amount.toLocaleString()}
                       </td>
                       <td className="px-6 py-5 text-right whitespace-nowrap">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
-                          ${tx.status === 'settlement' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-                            tx.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
-                            'bg-red-500/10 text-red-400 border border-red-500/20'}
+                          ${tx.status === 'settlement' ? 'bg-green-100 text-green-700 border border-green-200' : 
+                            tx.status === 'pending' ? 'bg-orange-100 text-orange-700 border border-orange-200' : 
+                            'bg-red-100 text-red-700 border border-red-200'}
                         `}>
                           {tx.status}
                         </span>
                         {tx.status === 'pending' && tx.snapToken && (
-                          <PayButton snapToken={tx.snapToken} />
+                          <div className="mt-2 inline-block">
+                            <PayButton snapToken={tx.snapToken} />
+                          </div>
                         )}
                       </td>
                     </tr>
