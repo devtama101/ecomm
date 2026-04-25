@@ -5,13 +5,14 @@ Status: COMPLETED
 **Goal:** Scaffold a Next.js App Router application, integrate Clerk for authentication, and establish route protection.
 
 ## Execution Steps
-1. Initialize a new Next.js 16 (v16.2.4) project with React 19, TypeScript, Tailwind CSS (v4.2.4), and App Router.
-2. Install `@clerk/nextjs@^7.2.5` and configure the environment variables (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`).
-3. Create `middleware.ts` at the root. Configure `clerkMiddleware()` to protect the `/dashboard` route and leave `/` as public.
-4. Update the root `layout.tsx` to wrap the application in `<ClerkProvider>`.
-5. Create a basic public landing page (`app/page.tsx`) with a `<SignInButton />`.
-6. Create a protected dashboard page (`app/dashboard/page.tsx`) displaying the `<UserButton />` and the user's Clerk ID.
-7. Install `vitest` and `@testing-library/react` for future test cases.
+1. Initialize a new Next.js project with React 19, TypeScript, Tailwind CSS, and App Router.
+2. Install `@clerk/nextjs` and configure environment variables.
+3. Create `middleware.ts` at the root. Configure `clerkMiddleware()` to protect routes.
+4. **RBAC Setup:** Define User Roles (default: `USER`, admin: `ADMIN`). Create a server-side check (or Clerk metadata mapping) to identify administrators.
+5. Create an Admin Layout Guard (`app/admin/layout.tsx`) that redirects non-admins to the home page or dashboard immediately.
+6. Update the root `layout.tsx` to wrap the application in `<ClerkProvider>`.
+7. Create a basic public landing page (`app/page.tsx`) and a protected dashboard page (`app/dashboard/page.tsx`).
+8. Install `vitest` and `@testing-library/react`.
 
 ## Expected Results
 - Navigating to `/dashboard` without an active session redirects to the Clerk login portal.

@@ -9,9 +9,13 @@ Status: COMPLETED
 2. Update the `Transaction` model: Add `productId` and create a relation to `Product`.
 3. Run migration to update the Supabase database schema.
 4. **Seed the DB:** Create `scripts/seed.ts` to inject dummy products using `@supabase/supabase-js`.
-5. **The Storefront:** Update `app/page.tsx` as a Server Component that fetches all active products.
-   - Branded as "Tama Arts" with a premium warm cream/stone theme.
-   - Product cards with images, prices, hover animations.
+1. Update `app/page.tsx` as a Server Component that fetches active products with their primary variants.
+2. **Interactive Product Grid:** Create `components/ProductCard.tsx` (Client Component).
+   - **Buy Now:** Direct button that triggers single-item checkout.
+   - **Add to Cart:** Floating icon button that updates the global store.
+   - **Auth Gate:** Use `useClerk().openSignIn()` to enforce login for purchase actions.
+3. Branded as "Tama Arts" with a premium warm cream/stone theme and smooth hover transitions.
+4. **Detail Link:** Ensure the card still links to the full product detail page for size/color selection.
 
 ## Expected Results
 - Landing page displays products pulled dynamically from the database.

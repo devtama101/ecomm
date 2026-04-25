@@ -8,10 +8,13 @@ Status: COMPLETED
 1. Install `prisma@^7.8.0` as a dev dependency and `@prisma/client@^7.8.0`.
 2. Initialize Prisma (`npx prisma init`) and configure `prisma.config.ts` to point to Supabase PostgreSQL.
 3. Define the following models in `schema.prisma`:
-   - `User`: `id` (UUID), `clerkId` (String, unique), `email` (String), `createdAt`.
-   - `Transaction`: `id` (UUID), `orderId` (String, unique), `userId` (relation), `amount` (Int), `status` (String), `snapToken` (optional), `createdAt`.
-4. Generate the initial migration.
-5. Create a global Prisma client instance utility at `lib/prisma.ts`.
+   - **User**: `clerkId`, `email`, `role` (ADMIN/USER).
+   - **Product**: `name`, `description`, `price`, `imageUrl` (main).
+   - **ProductVariant**: `productId`, `size`, `color`, `stock`, `imageUrl` (color-specific).
+   - **Order**: `id`, `userId`, `totalAmount`, `status` (PENDING, SETTLEMENT, EXPIRE).
+   - **OrderItem**: `orderId`, `productId`, `variantId`, `quantity`.
+4. **Clerk Webhook Sync:** Implement an API route (`app/api/webhooks/clerk/route.ts`) to synchronize Clerk user creation/updates with the Prisma `User` table.
+5. Generate the initial migration and create `lib/prisma.ts`.
 
 ## Lessons Learned
 - **Prisma v7 breaking change:** `url` and `directUrl` must NOT be in `schema.prisma`. They go in `prisma.config.ts`.

@@ -5,17 +5,13 @@ Status: COMPLETED
 **Goal:** Build a rich product detail page with image gallery and variant selection (size/color). Essential for a clothing store — buyers need to see photos from multiple angles and pick their size before purchasing.
 
 ## Execution Steps
-1. Add `ProductVariant` model to schema: `id`, `productId`, `size` (S/M/L/XL), `color`, `stock`.
-2. Add `ProductImage` model to schema: `id`, `productId`, `url`, `order`.
-3. Run migration to create the new tables.
-4. Create `app/product/[id]/page.tsx` — Server Component that fetches product with variants and images.
-5. Create `components/ProductDetailClient.tsx` — Client Component with:
-   - Interactive image gallery (thumbnail strip + main image).
-   - Size selector buttons.
-   - Color selector buttons.
-   - Real-time stock status (shows "Only X left!" or "Out of Stock").
-   - "Add to Cart" button (placeholder for Phase 6).
-6. Update admin product forms to support adding/removing variants and gallery images.
+1. **Variant Image Storage:** Use the `imageUrl` field directly in the `ProductVariant` model. Skip the generic `ProductImage` table.
+2. Create `app/product/[id]/page.tsx` — Server Component that fetches product with all variants.
+3. Create `components/ProductDetailClient.tsx` — Client Component with:
+   - **Dynamic Gallery:** Aggregated from main product image and all unique variant images.
+   - **Auto-Switch:** Automatically updates the main gallery image when a user selects a color.
+   - **Stock Logic:** Real-time status based on the selected size+color combination.
+4. **Admin Update:** Modify `EditProductForm.tsx` to include an image upload field for every variant row.
 
 ## Expected Results
 - Product detail page shows full gallery and variant options.
