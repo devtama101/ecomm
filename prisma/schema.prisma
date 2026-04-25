@@ -1,0 +1,32 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Models ────────────────────────────────────────────────────
+
+model User {
+  id           String        @id @default(uuid())
+  clerkId      String        @unique
+  email        String
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  orderId   String   @unique
+  userId    String
+  amount    Int
+  status    String   @default("pending") // pending | settlement | expire | deny
+  snapToken String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}

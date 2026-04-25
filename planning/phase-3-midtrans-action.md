@@ -1,4 +1,5 @@
 # Phase 3: Midtrans Server Action & Checkout UI
+Status: COMPLETED
 **Goal:** Create the backend controller (Server Action) to generate a Midtrans Snap Token and connect it to a frontend checkout button.
 
 ## Execution Steps
