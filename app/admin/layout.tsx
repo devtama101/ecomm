@@ -39,15 +39,15 @@ export default async function AdminLayout({
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/" className="text-xl font-bold tracking-tight text-stone-900 hover:text-stone-600 transition-colors uppercase">
-              Tama Arts Admin
+              Tama Arts
             </Link>
             <div className="flex items-center gap-6 text-sm font-medium">
+              <Link href="/admin" className="text-stone-500 hover:text-stone-900 transition-colors">Overview</Link>
               <Link href="/admin/products" className="text-stone-500 hover:text-stone-900 transition-colors">Products</Link>
               <Link href="/admin/transactions" className="text-stone-500 hover:text-stone-900 transition-colors">Transactions</Link>
             </div>
           </div>
           <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="text-xs font-medium text-stone-400 hover:text-stone-600">Exit Admin</Link>
             <UserButton />
           </div>
         </div>

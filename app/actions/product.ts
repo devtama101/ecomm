@@ -116,3 +116,20 @@ export async function updateProduct(id: string, formData: FormData) {
   revalidatePath("/admin/products");
   revalidatePath("/");
 }
+
+export async function incrementProductView(id: string) {
+  // Use Prisma or Supabase directly. Since we have a viewCount column, we need to read it and increment it, or use RPC.
+  // We can just fetch current, then increment by 1.
+  const { data } = await supabase
+    .from("Product")
+    .select("viewCount")
+    .eq("id", id)
+    .single();
+  
+  if (data) {
+    await supabase
+      .from("Product")
+      .update({ viewCount: (data.viewCount || 0) + 1 })
+      .eq("id", id);
+  }
+}

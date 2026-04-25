@@ -27,6 +27,21 @@ model Transaction {
   status    String   @default("pending") // pending | settlement | expire | deny
   snapToken String?
   createdAt DateTime @default(now())
+  productId String?
 
-  user User @relation(fields: [userId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  price       Int
+  isActive    Boolean  @default(true)
+  imageUrl    String?
+  viewCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  transactions Transaction[]
 }

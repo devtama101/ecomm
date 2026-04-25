@@ -48,9 +48,6 @@ export default async function StorePage() {
               </>
             ) : (
               <>
-                <SignInButton mode="modal" forceRedirectUrl="/dashboard">
-                  <button className="hover:text-stone-900 transition-colors">Transactions</button>
-                </SignInButton>
                 <SignInButton mode="modal" forceRedirectUrl="/">
                   <button className="px-5 py-2.5 bg-stone-900 text-[#fdfbf7] rounded-full hover:bg-stone-800 transition-all font-semibold shadow-md">
                     Sign In
