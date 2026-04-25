@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; // or service role key if needed
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; // or service role key if needed
 
 if (!supabaseUrl || !supabaseKey) {
   console.error("Missing Supabase URL or Key");

@@ -6,7 +6,7 @@ import path from "path";
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; // Actually we might need service role key to bypass RLS, but publishable is fine if RLS allows or if we are using postgres directly
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; // Actually we might need service role key to bypass RLS, but publishable is fine if RLS allows or if we are using postgres directly
 
 if (!supabaseUrl || !supabaseKey) {
   console.error("Missing Supabase env vars.");

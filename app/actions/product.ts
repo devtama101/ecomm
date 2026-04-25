@@ -3,10 +3,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import { v4 as uuidv4 } from "uuid";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 export async function createProduct(formData: FormData) {
@@ -17,51 +18,106 @@ export async function createProduct(formData: FormData) {
   const description = formData.get("description") as string;
   const price = parseInt(formData.get("price") as string, 10);
   const isActive = formData.get("isActive") === "on";
-  const image = formData.get("image") as File | null;
+  const mainImage = formData.get("image") as File | null;
+  
+  // Parse variants from hidden input (stringified JSON)
+  const variantsJson = formData.get("variants") as string;
+  const variants = variantsJson ? JSON.parse(variantsJson) : [];
 
   let imageUrl: string | null = null;
 
-  if (image && image.size > 0) {
-    const fileExt = image.name.split('.').pop();
+  // Handle main image upload
+  if (mainImage && mainImage.size > 0) {
+    const fileExt = mainImage.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `products/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("products")
-      .upload(filePath, image);
+      .upload(filePath, mainImage);
 
-    if (uploadError) {
-      console.error("Upload error", uploadError);
-      throw new Error("Failed to upload image");
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage
+        .from("products")
+        .getPublicUrl(filePath);
+      imageUrl = publicUrl;
     }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from("products")
-      .getPublicUrl(filePath);
-
-    imageUrl = publicUrl;
   }
 
-  // Insert to DB using REST API directly since we updated via raw SQL and Prisma local client
-  // might not have the imageUrl field if generated locally but remote is not updated.
-  // Actually we generated the prisma client, so we could use Prisma if we had it imported,
-  // but using Supabase js is safer here to ensure it uses the remote schema natively.
-  
-  const { error } = await supabase.from("Product").insert({
-    name,
-    description,
-    price,
-    isActive,
-    imageUrl,
-  });
+  // Handle gallery image uploads
+  const galleryFiles = formData.getAll("gallery") as File[];
+  const galleryUrls: string[] = [];
 
-  if (error) {
-    console.error("Database error", error);
-    throw new Error("Failed to create product");
+  for (const file of galleryFiles) {
+    if (file.size > 0) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `products/gallery/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("products")
+        .upload(filePath, file);
+
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage
+          .from("products")
+          .getPublicUrl(filePath);
+        galleryUrls.push(publicUrl);
+      }
+    }
+  }
+
+  // Create product
+  const productId = uuidv4();
+  const { data: product, error: productError } = await supabase
+    .from("Product")
+    .insert({
+      id: productId,
+      name,
+      description,
+      price,
+      isActive,
+      imageUrl,
+    })
+    .select()
+    .single();
+
+  if (productError) throw new Error(productError.message);
+
+  // Insert variants
+  if (variants.length > 0) {
+    const { error: variantError } = await supabase
+      .from("ProductVariant")
+      .insert(
+        variants.map((v: any) => ({
+          id: uuidv4(),
+          productId,
+          size: v.size,
+          color: v.color,
+          stock: parseInt(v.stock, 10) || 0,
+        }))
+      );
+    if (variantError) console.error("Variant insert error:", variantError);
+  }
+
+  // Insert gallery images
+  if (galleryUrls.length > 0) {
+    const { error: imageError } = await supabase
+      .from("ProductImage")
+      .insert(
+        galleryUrls.map((url, i) => ({
+          id: uuidv4(),
+          productId,
+          url,
+          order: i,
+        }))
+      );
+    if (imageError) console.error("Image insert error:", imageError);
   }
 
   revalidatePath("/admin/products");
   revalidatePath("/");
+  return product;
 }
 
 export async function updateProduct(id: string, formData: FormData) {
@@ -72,45 +128,88 @@ export async function updateProduct(id: string, formData: FormData) {
   const description = formData.get("description") as string;
   const price = parseInt(formData.get("price") as string, 10);
   const isActive = formData.get("isActive") === "on";
-  const image = formData.get("image") as File | null;
+  const mainImage = formData.get("image") as File | null;
+  
+  const variantsJson = formData.get("variants") as string;
+  const variants = variantsJson ? JSON.parse(variantsJson) : [];
 
   let imageUrl = formData.get("existingImageUrl") as string | null;
 
-  if (image && image.size > 0) {
-    const fileExt = image.name.split('.').pop();
+  if (mainImage && mainImage.size > 0) {
+    const fileExt = mainImage.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `products/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("products")
-      .upload(filePath, image);
+      .upload(filePath, mainImage);
 
-    if (uploadError) {
-      console.error("Upload error", uploadError);
-      throw new Error("Failed to upload image");
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage
+        .from("products")
+        .getPublicUrl(filePath);
+      imageUrl = publicUrl;
     }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from("products")
-      .getPublicUrl(filePath);
-
-    imageUrl = publicUrl;
   }
 
-  const { error } = await supabase
+  // Handle gallery uploads
+  const galleryFiles = formData.getAll("gallery") as File[];
+  const newGalleryUrls: string[] = [];
+
+  for (const file of galleryFiles) {
+    if (file.size > 0) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `products/gallery/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("products")
+        .upload(filePath, file);
+
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage
+          .from("products")
+          .getPublicUrl(filePath);
+        newGalleryUrls.push(publicUrl);
+      }
+    }
+  }
+
+  // Update product
+  await supabase
     .from("Product")
-    .update({
-      name,
-      description,
-      price,
-      isActive,
-      imageUrl,
-    })
+    .update({ name, description, price, isActive, imageUrl })
     .eq("id", id);
 
-  if (error) {
-    console.error("Database error", error);
-    throw new Error("Failed to update product");
+  // Delete old variants, insert new ones
+  await supabase.from("ProductVariant").delete().eq("productId", id);
+
+  if (variants.length > 0) {
+    await supabase
+      .from("ProductVariant")
+      .insert(
+        variants.map((v: any) => ({
+          id: uuidv4(),
+          productId: id,
+          size: v.size,
+          color: v.color,
+          stock: parseInt(v.stock, 10) || 0,
+        }))
+      );
+  }
+
+  // Append new gallery images
+  if (newGalleryUrls.length > 0) {
+    await supabase
+      .from("ProductImage")
+      .insert(
+        newGalleryUrls.map((url, i) => ({
+          id: uuidv4(),
+          productId: id,
+          url,
+          order: i,
+        }))
+      );
   }
 
   revalidatePath("/admin/products");
@@ -118,8 +217,6 @@ export async function updateProduct(id: string, formData: FormData) {
 }
 
 export async function incrementProductView(id: string) {
-  // Use Prisma or Supabase directly. Since we have a viewCount column, we need to read it and increment it, or use RPC.
-  // We can just fetch current, then increment by 1.
   const { data } = await supabase
     .from("Product")
     .select("viewCount")

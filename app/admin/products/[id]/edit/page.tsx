@@ -4,7 +4,7 @@ import EditProductForm from "./EditProductForm";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 export default async function EditProductPage({ params }: { params: { id: string } }) {
@@ -12,7 +12,11 @@ export default async function EditProductPage({ params }: { params: { id: string
 
   const { data: product } = await supabase
     .from("Product")
-    .select("*")
+    .select(`
+      *,
+      variants:ProductVariant(*),
+      images:ProductImage(*)
+    `)
     .eq("id", id)
     .single();
 

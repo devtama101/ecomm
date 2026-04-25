@@ -10,7 +10,7 @@ export default async function StorePage() {
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
   const { data: dbUser } = userId ? await supabase
@@ -74,7 +74,11 @@ export default async function StorePage() {
           {/* Product Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
             {products?.map((product) => (
-              <div key={product.id} className="bg-white rounded-3xl overflow-hidden border border-stone-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative group flex flex-col hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-1">
+              <Link 
+                key={product.id} 
+                href={`/product/${product.id}`}
+                className="bg-white rounded-3xl overflow-hidden border border-stone-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative group flex flex-col hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-1"
+              >
                 {/* Product Image */}
                 <div className="aspect-[4/5] w-full bg-stone-100 relative overflow-hidden">
                   {product.imageUrl ? (
@@ -101,13 +105,15 @@ export default async function StorePage() {
                   </div>
 
                   <div className="mt-auto">
-                    <div className="mb-6">
+                    <div className="mb-6 flex justify-between items-end">
                       <p className="text-2xl font-black text-stone-900">Rp {product.price.toLocaleString()}</p>
                     </div>
-                    <CheckoutButton productId={product.id} price={product.price} />
+                    <div className="w-full py-4 bg-stone-900 text-[#fdfbf7] rounded-full text-center font-bold group-hover:bg-stone-800 transition-colors shadow-lg">
+                      View Details
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
             
             {!products?.length && (
