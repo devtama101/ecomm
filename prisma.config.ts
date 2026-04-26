@@ -12,6 +12,6 @@ export default defineConfig({
   },
   datasource: {
     // Use direct database host for migrations (bypasses Supavisor pooler)
-    url: process.env["DIRECT_URL"] || process.env["DATABASE_URL"],
+    url: process.env["PRISMA_DATABASE_URL"] || process.env["DIRECT_URL"] || process.env["DATABASE_URL"],
   },
 });

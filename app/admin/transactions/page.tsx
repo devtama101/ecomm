@@ -8,8 +8,26 @@ const supabase = createClient(
 export default async function AdminTransactionsPage() {
   const { data: transactions } = await supabase
     .from("Transaction")
-    .select("*, User(email), Product(name)")
+    .select(`
+      *,
+      user:User(email),
+      items:TransactionItem(
+        product:Product(name)
+      )
+    `)
     .order("createdAt", { ascending: false });
+
+  const normalizedTransactions = (transactions || []).map(tx => ({
+    id: tx.id,
+    orderId: tx.orderId,
+    email: tx.user?.email || "Unknown",
+    productName: tx.items?.length > 1 
+      ? `${tx.items[0]?.product?.name} (+${tx.items.length - 1} more)`
+      : tx.items?.[0]?.product?.name || "No items",
+    amount: tx.amount,
+    status: tx.status,
+    createdAt: tx.createdAt
+  }));
 
   return (
     <div className="space-y-6">
@@ -40,16 +58,16 @@ export default async function AdminTransactionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {transactions?.map((tx) => (
+              {normalizedTransactions?.map((tx) => (
                 <tr key={tx.id} className="hover:bg-stone-50 transition-colors">
                   <td className="px-6 py-4 font-mono text-[10px] text-stone-700">
                     #{tx.orderId.split('-')[0]}...
                   </td>
                   <td className="px-6 py-4 text-stone-900 font-medium">
-                    {tx.User?.email || "Unknown"}
+                    {tx.email}
                   </td>
                   <td className="px-6 py-4 text-stone-700">
-                    {tx.Product?.name || "Deleted Product"}
+                    {tx.productName}
                   </td>
                   <td className="px-6 py-4 font-bold text-stone-900">
                     Rp {tx.amount.toLocaleString()}
@@ -68,7 +86,7 @@ export default async function AdminTransactionsPage() {
                   </td>
                 </tr>
               ))}
-              {!transactions?.length && (
+              {!normalizedTransactions?.length && (
                 <tr>
                   <td colSpan={6} className="px-6 py-24 text-center">
                     <p className="text-stone-400 font-medium italic text-sm">No transactions recorded yet.</p>

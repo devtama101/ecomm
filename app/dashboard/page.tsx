@@ -22,30 +22,26 @@ export default async function DashboardPage() {
   let dbUser;
   try {
     // 1. Robust Sync using Supabase
+    // Check if user exists first to preserve role
+    const { data: existingUser } = await supabase
+      .from("User")
+      .select("role")
+      .eq("clerkId", userId)
+      .single();
+
     const { data, error } = await supabase
       .from("User")
       .upsert(
         { 
           clerkId: userId, 
           email: user.emailAddresses[0]?.emailAddress || "", 
-          role: 'user' 
+          role: existingUser ? existingUser.role : 'user' 
         }, 
         { onConflict: 'clerkId' }
       )
       .select()
       .single();
-
-    if (error) throw error;
     dbUser = data;
-  } catch (syncError) {
-    console.error("[Dashboard] Sync error:", syncError);
-    // Fallback: try to find user
-    const { data: existingUser } = await supabase
-      .from("User")
-      .select("*")
-      .eq("clerkId", userId)
-      .single();
-    dbUser = existingUser;
     if (!dbUser) throw new Error("Could not sync or find user");
   }
 
@@ -55,10 +51,16 @@ export default async function DashboardPage() {
 
   let transactions = [];
   try {
-    // 2. Fetch Transactions using Supabase
+    // 2. Fetch Transactions using Supabase with unified items
     const { data, error } = await supabase
       .from("Transaction")
-      .select("*, product:Product(*)")
+      .select(`
+        *,
+        items:TransactionItem(
+          *,
+          product:Product(*)
+        )
+      `)
       .eq("userId", dbUser.id)
       .order("createdAt", { ascending: false });
     
@@ -123,7 +125,9 @@ export default async function DashboardPage() {
                         {tx.orderId}
                       </td>
                       <td className="px-6 py-5 text-sm font-medium text-stone-900">
-                        {tx.product?.name || "Unknown Product"}
+                        {tx.items?.length > 1 
+                          ? `${tx.items[0]?.product?.name} (+${tx.items.length - 1} more)`
+                          : tx.items?.[0]?.product?.name || "No items"}
                       </td>
                       <td className="px-6 py-5 text-sm text-stone-500">
                         {new Date(tx.createdAt).toLocaleDateString('en-US', {

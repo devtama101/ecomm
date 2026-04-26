@@ -99,20 +99,37 @@ export async function createSnapTransaction(productId: string) {
     const snapToken = midtransTx.token;
 
     // 5. Save Transaction to our Database
-    const { error: txError } = await supabase
+    const { data: tx, error: txError } = await supabase
       .from("Transaction")
       .insert([{
         orderId,
         userId: dbUser.id,
-        productId: product.id,
         amount,
         status: "pending",
         snapToken,
-      }]);
+      }])
+      .select()
+      .single();
 
-    if (txError) {
+    if (txError || !tx) {
       console.error("Error creating transaction:", txError);
       throw new Error("Database error saving transaction");
+    }
+
+    // 6. Save TransactionItem
+    const { error: tiError } = await supabase
+      .from("TransactionItem")
+      .insert([{
+        transactionId: tx.id,
+        productId: product.id,
+        variantId: product.variantId || null,
+        quantity: 1,
+        price: amount,
+      }]);
+
+    if (tiError) {
+      console.error("Error creating transaction item:", tiError);
+      throw new Error("Database error saving transaction item");
     }
 
     return {
@@ -241,14 +258,14 @@ export async function createMultiItemTransaction(items: CartCheckoutItem[]) {
     const midtransTx = await snap.createTransaction(parameter);
     const snapToken = midtransTx.token;
 
-    // 5. Save Order to database
-    const { data: order, error: orderError } = await supabase
-      .from("Order")
+    // 5. Save Transaction to our Database
+    const { data: tx, error: txError } = await supabase
+      .from("Transaction")
       .insert([
         {
           orderId,
           userId: dbUser.id,
-          total: grossAmount,
+          amount: grossAmount,
           status: "pending",
           snapToken,
         },
@@ -256,24 +273,24 @@ export async function createMultiItemTransaction(items: CartCheckoutItem[]) {
       .select()
       .single();
 
-    if (orderError || !order) {
-      console.error("Error creating order:", orderError);
-      throw new Error("Database error saving order");
+    if (txError || !tx) {
+      console.error("Error creating transaction:", txError);
+      throw new Error("Database error saving transaction");
     }
 
-    // 6. Save OrderItems
-    const orderItemsToInsert = orderItems.map((oi) => ({
+    // 6. Save TransactionItems
+    const transactionItemsToInsert = orderItems.map((oi) => ({
       ...oi,
-      orderId: order.id,
+      transactionId: tx.id,
     }));
 
-    const { error: oiError } = await supabase
-      .from("OrderItem")
-      .insert(orderItemsToInsert);
+    const { error: tiError } = await supabase
+      .from("TransactionItem")
+      .insert(transactionItemsToInsert);
 
-    if (oiError) {
-      console.error("Error creating order items:", oiError);
-      throw new Error("Database error saving order items");
+    if (tiError) {
+      console.error("Error creating transaction items:", tiError);
+      throw new Error("Database error saving transaction items");
     }
 
     return {

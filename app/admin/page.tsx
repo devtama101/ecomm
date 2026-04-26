@@ -20,16 +20,17 @@ export default async function AdminOverviewPage(props: { searchParams?: Promise<
     .from("Transaction")
     .select("*", { count: "exact", head: true });
 
-  // Fetch sales to calculate "Most Sold"
+  // Fetch sales from unified transaction items (where transaction is settled)
   const { data: sales } = await supabase
-    .from("Transaction")
-    .select("productId")
-    .eq("status", "settlement");
+    .from("TransactionItem")
+    .select("productId, quantity, transaction:Transaction!inner(status)")
+    .eq("transaction.status", "settlement");
 
   const salesCount: Record<string, number> = {};
+  
   sales?.forEach((s) => {
     if (s.productId) {
-      salesCount[s.productId] = (salesCount[s.productId] || 0) + 1;
+      salesCount[s.productId] = (salesCount[s.productId] || 0) + s.quantity;
     }
   });
 
