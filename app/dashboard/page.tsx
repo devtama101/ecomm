@@ -22,13 +22,13 @@ export default async function DashboardPage() {
 
   // Ensure user exists in our DB (Lazy sync)
   let dbUser = await prisma.user.findUnique({
-    where: { clerkId: userId }
+    where: { clerkId: userId as string }
   })
 
   if (!dbUser) {
     dbUser = await prisma.user.create({
       data: {
-        clerkId: userId,
+        clerkId: userId as string,
         email: user.emailAddresses[0].emailAddress,
         role: 'user'
       }

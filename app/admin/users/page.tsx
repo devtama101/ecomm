@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import UserToggle from "./UserToggle";
+import DeleteUserButton from "./DeleteUserButton";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -67,11 +68,18 @@ export default async function AdminUsersPage() {
                   </span>
                 </td>
                 <td className="px-8 py-6 text-right">
-                  <UserToggle 
-                    clerkId={user.clerkId} 
-                    currentRole={user.role} 
-                    isSelf={user.clerkId === userId}
-                  />
+                  <div className="flex items-center justify-end gap-2">
+                    <UserToggle 
+                      clerkId={user.clerkId} 
+                      currentRole={user.role} 
+                      isSelf={user.clerkId === userId}
+                    />
+                    <DeleteUserButton 
+                      clerkId={user.clerkId} 
+                      userEmail={user.email} 
+                      isSelf={user.clerkId === userId} 
+                    />
+                  </div>
                 </td>
               </tr>
             ))}
