@@ -68,7 +68,7 @@ export default async function AdminUsersPage() {
                       ? "bg-orange-100 text-orange-600" 
                       : "bg-stone-100 text-stone-500"
                   }`}>
-                    {user.role}
+                    {user.role === "admin" ? "admin" : "customer"}
                   </span>
                 </td>
                 <td className="px-8 py-6 text-right">

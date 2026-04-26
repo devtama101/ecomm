@@ -13,11 +13,32 @@ export default async function StorePage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const { data: dbUser } = userId ? await supabase
-    .from("User")
-    .select("role")
-    .eq("clerkId", userId)
-    .single() : { data: null };
+  const user = await currentUser();
+  let dbUser = null;
+  
+  if (userId) {
+    const { data } = await supabase
+      .from("User")
+      .select("role")
+      .eq("clerkId", userId)
+      .single();
+    dbUser = data;
+
+    // If logged in but not in DB, create user (Sync)
+    if (!dbUser && user) {
+      try {
+        const email = user.emailAddresses[0].emailAddress;
+        const { data: newUser } = await supabase
+          .from("User")
+          .insert([{ clerkId: userId, email, role: "user" }])
+          .select("role")
+          .single();
+        dbUser = newUser;
+      } catch (e) {
+        console.error("Home sync error:", e);
+      }
+    }
+  }
 
   const isAdmin = dbUser?.role === "admin";
   

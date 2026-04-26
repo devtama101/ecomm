@@ -48,9 +48,11 @@ export async function POST(req: Request) {
 
   // Handle the event
   const eventType = evt.type
+  console.log(`[Clerk Webhook] Received event: ${eventType}`);
 
   if (eventType === 'user.created' || eventType === 'user.updated') {
     const { id, email_addresses, first_name, last_name } = evt.data
+    console.log(`[Clerk Webhook] Processing user: ${id}, email: ${email_addresses[0]?.email_address}`);
     const email = email_addresses[0]?.email_address
 
     if (!id || !email) {
@@ -58,17 +60,23 @@ export async function POST(req: Request) {
     }
 
     // Create or update user in database
-    await prisma.user.upsert({
-      where: { clerkId: id },
-      update: {
-        email: email,
-      },
-      create: {
-        clerkId: id,
-        email: email,
-        role: 'user', // Default role
-      },
-    })
+    try {
+      await prisma.user.upsert({
+        where: { clerkId: id },
+        update: {
+          email: email,
+        },
+        create: {
+          clerkId: id,
+          email: email,
+          role: 'user', // Default role
+        },
+      })
+      console.log(`[Clerk Webhook] Successfully synced user: ${id}`);
+    } catch (dbError) {
+      console.error(`[Clerk Webhook] Database error syncing user ${id}:`, dbError);
+      return new Response('Error: Database error', { status: 500 })
+    }
   }
 
   if (eventType === 'user.deleted') {

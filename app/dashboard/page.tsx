@@ -12,54 +12,50 @@ const supabase = createClient(
 );
 
 export default async function DashboardPage() {
-  const { userId } = await auth()
-  
-  // Fetch user from Clerk
-  const user = await currentUser()
-  if (!user) {
-    redirect('/')
-  }
+  try {
+    const { userId } = await auth()
+    
+    // Fetch user from Clerk
+    const user = await currentUser()
+    if (!user) {
+      redirect('/')
+    }
 
-  // Ensure user exists in our DB (Lazy sync)
-  let dbUser = await prisma.user.findUnique({
-    where: { clerkId: userId as string }
-  })
-
-  if (!dbUser) {
-    dbUser = await prisma.user.create({
-      data: {
+    // Ensure user exists in our DB (Robust sync)
+    const dbUser = await prisma.user.upsert({
+      where: { clerkId: userId as string },
+      update: { email: user.emailAddresses[0].emailAddress },
+      create: {
         clerkId: userId as string,
         email: user.emailAddresses[0].emailAddress,
         role: 'user'
       }
     })
-  }
 
-  if (dbUser.role === 'admin') {
-    redirect('/admin')
-  }
+    if (dbUser.role === 'admin') {
+      redirect('/admin')
+    }
 
-  // Fetch transactions using Prisma
-  const transactions = await prisma.transaction.findMany({
-    where: { userId: dbUser.id },
-    include: { product: true },
-    orderBy: { createdAt: 'desc' }
-  })
+    // Fetch transactions using Prisma
+    const transactions = await prisma.transaction.findMany({
+      where: { userId: dbUser.id },
+      include: { product: true },
+      orderBy: { createdAt: 'desc' }
+    })
 
-
-  return (
-    <div className="min-h-screen bg-[#fdfbf7] text-stone-800 selection:bg-orange-500/30">
-      <nav className="w-full border-b border-stone-200 bg-white/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-black tracking-tighter text-stone-900">
-            TAMA ARTS
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link href="/" className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors">Store</Link>
-            <UserButton />
+    return (
+      <div className="min-h-screen bg-[#fdfbf7] text-stone-800 selection:bg-orange-500/30">
+        <nav className="w-full border-b border-stone-200 bg-white/80 backdrop-blur-xl">
+          <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <Link href="/" className="text-2xl font-black tracking-tighter text-stone-900">
+              TAMA ARTS
+            </Link>
+            <div className="flex items-center gap-6">
+              <Link href="/" className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors">Store</Link>
+              <UserButton />
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
       <main className="max-w-5xl mx-auto px-6 py-12">
         <div className="mb-12">
@@ -139,4 +135,18 @@ export default async function DashboardPage() {
       </main>
     </div>
   )
+} catch (error) {
+  console.error("Dashboard error:", error);
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#fdfbf7]">
+      <h1 className="text-2xl font-black text-stone-900 mb-4">Something went wrong</h1>
+      <p className="text-stone-500 mb-8 text-center max-w-md">
+        We encountered an error loading your dashboard. This usually happens if your account sync is still in progress.
+      </p>
+      <Link href="/" className="px-8 py-3 bg-stone-900 text-white rounded-full font-bold">
+        Back to Store
+      </Link>
+    </div>
+  );
+}
 }
