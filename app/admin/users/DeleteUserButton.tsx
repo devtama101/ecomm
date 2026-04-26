@@ -27,8 +27,12 @@ export default function DeleteUserButton({
       onConfirm: async () => {
         setIsLoading(true);
         try {
-          await deleteUser(clerkId);
-          addToast("User deleted successfully", "success");
+          const res = await deleteUser(clerkId);
+          if (res.success) {
+            addToast("User deleted successfully", "success");
+          } else {
+            addToast(res.message || "Failed to delete user", "error");
+          }
         } catch (error: any) {
           addToast(error.message, "error");
         } finally {

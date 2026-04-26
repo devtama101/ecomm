@@ -25,10 +25,14 @@ export default async function AdminUsersPage() {
   }
 
   // Fetch all users
-  const { data: users } = await supabase
+  const { data: users, error: usersError } = await supabase
     .from("User")
     .select("*")
     .order("createdAt", { ascending: false });
+
+  if (usersError) {
+    console.error("Error fetching users:", usersError);
+  }
 
   return (
     <div className="space-y-8">

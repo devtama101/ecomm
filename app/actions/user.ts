@@ -65,8 +65,11 @@ export async function deleteUser(clerkId: string) {
   }
 
   try {
+    console.log(`[Admin] Attempting to delete user: ${clerkId}`);
+    
     // 1. Delete from Clerk
     await clerk.users.deleteUser(clerkId);
+    console.log(`[Admin] Successfully deleted user from Clerk: ${clerkId}`);
 
     // 2. Delete from our DB
     const { error } = await supabase
@@ -74,12 +77,17 @@ export async function deleteUser(clerkId: string) {
       .delete()
       .eq("clerkId", clerkId);
 
-    if (error) throw error;
+    if (error) {
+      console.error(`[Admin] Supabase error deleting user ${clerkId}:`, error);
+      throw error;
+    }
+    
+    console.log(`[Admin] Successfully deleted user from DB: ${clerkId}`);
 
     revalidatePath("/admin/users");
     return { success: true };
   } catch (error: any) {
-    console.error("Error deleting user:", error);
-    throw new Error(error.message || "Failed to delete user");
+    console.error("[Admin] Error in deleteUser action:", error);
+    return { success: false, message: error.message || "Failed to delete user" };
   }
 }
