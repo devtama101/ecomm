@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import DeleteProductButton from "@/components/admin/DeleteProductButton";
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { updateProduct } from "@/app/actions/product";
 import Link from "next/link";
 import DeleteProductButton from "@/components/admin/DeleteProductButton";
 
