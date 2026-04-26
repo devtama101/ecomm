@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth, SignInButton } from "@clerk/nextjs";
 import { createSnapTransaction } from "@/actions/payment.action";
+import { useUIStore } from "@/store/uiStore";
 
 // Extend window object to include snap
 declare global {
@@ -19,6 +20,7 @@ interface CheckoutButtonProps {
 export default function CheckoutButton({ productId, price }: CheckoutButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { isSignedIn } = useAuth();
+  const { addToast } = useUIStore();
 
   const handleCheckout = async () => {
     if (!isSignedIn) return; // Should not be reachable as button is wrapped
@@ -31,29 +33,28 @@ export default function CheckoutButton({ productId, price }: CheckoutButtonProps
         window.snap.pay(result.snapToken, {
           onSuccess: function (result: any) {
             console.log("success", result);
-            alert("Payment successful! Redirecting to your dashboard...");
-            window.location.href = "/dashboard";
+            addToast("Payment successful! Redirecting...", "success");
+            setTimeout(() => window.location.href = "/dashboard", 1500);
           },
           onPending: function (result: any) {
             console.log("pending", result);
-            alert("Waiting for your payment! You can check the status in your dashboard.");
-            window.location.href = "/dashboard";
+            addToast("Waiting for your payment! Checking status...", "info");
+            setTimeout(() => window.location.href = "/dashboard", 1500);
           },
           onError: function (result: any) {
             console.log("error", result);
-            alert("Payment failed!");
+            addToast("Payment failed!", "error");
           },
           onClose: function () {
-            console.log("customer closed the popup without finishing the payment");
-            alert("You closed the popup without finishing the payment");
+            addToast("You closed the payment popup.", "info");
           },
         });
       } else {
-        alert(result.message || "Failed to initiate payment");
+        addToast(result.message || "Failed to initiate payment", "error");
       }
     } catch (error) {
       console.error("Checkout Error:", error);
-      alert(`Error: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
+      addToast("Something went wrong. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }

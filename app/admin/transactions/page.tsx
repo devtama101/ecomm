@@ -12,38 +12,46 @@ export default async function AdminTransactionsPage() {
     .order("createdAt", { ascending: false });
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-stone-900">All Transactions</h1>
-        <p className="text-stone-500 text-sm mt-1">View all customer orders and payments</p>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold text-stone-900">All Transactions</h1>
+          <p className="text-stone-500 text-sm mt-1">View all customer orders and payments</p>
+        </div>
+        <div className="lg:hidden flex items-center gap-2 text-stone-400 text-[10px] font-bold uppercase tracking-widest">
+          <svg className="w-4 h-4 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+          </svg>
+          Scroll to view more
+        </div>
       </div>
 
       <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scrollbar-hide">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead>
               <tr className="border-b border-stone-200 bg-stone-50 text-stone-500">
-                <th className="px-6 py-4 font-medium">Order ID</th>
-                <th className="px-6 py-4 font-medium">Customer</th>
-                <th className="px-6 py-4 font-medium">Product</th>
-                <th className="px-6 py-4 font-medium">Amount</th>
-                <th className="px-6 py-4 font-medium">Status</th>
-                <th className="px-6 py-4 font-medium text-right">Date</th>
+                <th className="px-6 py-4 font-medium uppercase tracking-wider text-[10px]">Order ID</th>
+                <th className="px-6 py-4 font-medium uppercase tracking-wider text-[10px]">Customer</th>
+                <th className="px-6 py-4 font-medium uppercase tracking-wider text-[10px]">Product</th>
+                <th className="px-6 py-4 font-medium uppercase tracking-wider text-[10px]">Amount</th>
+                <th className="px-6 py-4 font-medium uppercase tracking-wider text-[10px]">Status</th>
+                <th className="px-6 py-4 font-medium uppercase tracking-wider text-[10px] text-right">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
               {transactions?.map((tx) => (
                 <tr key={tx.id} className="hover:bg-stone-50 transition-colors">
-                  <td className="px-6 py-4 font-mono text-xs text-stone-700">
-                    {tx.orderId}
+                  <td className="px-6 py-4 font-mono text-[10px] text-stone-700">
+                    #{tx.orderId.split('-')[0]}...
                   </td>
-                  <td className="px-6 py-4 text-stone-900">
+                  <td className="px-6 py-4 text-stone-900 font-medium">
                     {tx.User?.email || "Unknown"}
                   </td>
                   <td className="px-6 py-4 text-stone-700">
-                    {tx.Product?.name || "Unknown"}
+                    {tx.Product?.name || "Deleted Product"}
                   </td>
-                  <td className="px-6 py-4 font-medium text-stone-900">
+                  <td className="px-6 py-4 font-bold text-stone-900">
                     Rp {tx.amount.toLocaleString()}
                   </td>
                   <td className="px-6 py-4">
@@ -55,15 +63,15 @@ export default async function AdminTransactionsPage() {
                       {tx.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-stone-500 text-right text-xs">
-                    {new Date(tx.createdAt).toLocaleString()}
+                  <td className="px-6 py-4 text-stone-500 text-right text-[11px]">
+                    {new Date(tx.createdAt).toLocaleDateString()}
                   </td>
                 </tr>
               ))}
               {!transactions?.length && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-stone-500">
-                    No transactions found.
+                  <td colSpan={6} className="px-6 py-24 text-center">
+                    <p className="text-stone-400 font-medium italic text-sm">No transactions recorded yet.</p>
                   </td>
                 </tr>
               )}

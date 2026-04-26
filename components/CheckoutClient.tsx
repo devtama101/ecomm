@@ -5,6 +5,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useAuth, SignInButton } from "@clerk/nextjs";
 import { createMultiItemTransaction } from "@/actions/payment.action";
 import Link from "next/link";
+import { useUIStore } from "@/store/uiStore";
 
 declare global {
   interface Window {
@@ -20,6 +21,7 @@ export default function CheckoutClient() {
   const { isSignedIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const { addToast } = useUIStore();
 
   useEffect(() => setMounted(true), []);
 
@@ -50,27 +52,27 @@ export default function CheckoutClient() {
         window.snap.pay(result.snapToken, {
           onSuccess: function () {
             clearCart();
-            alert("Payment successful! Redirecting to your orders...");
-            window.location.href = "/dashboard";
+            addToast("Payment successful! Redirecting...", "success");
+            setTimeout(() => window.location.href = "/dashboard", 1500);
           },
           onPending: function () {
             clearCart();
-            alert("Waiting for your payment! Check status in your orders.");
-            window.location.href = "/dashboard";
+            addToast("Waiting for your payment! Check status in dashboard.", "info");
+            setTimeout(() => window.location.href = "/dashboard", 1500);
           },
           onError: function () {
-            alert("Payment failed! Please try again.");
+            addToast("Payment failed! Please try again.", "error");
           },
           onClose: function () {
             // User closed without paying
           },
         });
       } else {
-        alert(result.message || "Failed to initiate payment");
+        addToast(result.message || "Failed to initiate payment", "error");
       }
     } catch (error) {
       console.error("Checkout Error:", error);
-      alert("Something went wrong. Please try again.");
+      addToast("Something went wrong. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }

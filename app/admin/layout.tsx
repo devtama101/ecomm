@@ -1,8 +1,7 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
+import AdminNavbar from "@/components/admin/AdminNavbar";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,27 +33,9 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] text-stone-800 selection:bg-orange-200 flex flex-col font-sans">
-      {/* Admin Top Navigation */}
-      <nav className="w-full border-b border-stone-200 bg-[#fdfbf7]/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="text-xl font-bold tracking-tight text-stone-900 hover:text-stone-600 transition-colors uppercase">
-              Tama Arts
-            </Link>
-            <div className="flex items-center gap-6 text-sm font-medium">
-              <Link href="/admin" className="text-stone-500 hover:text-stone-900 transition-colors">Overview</Link>
-              <Link href="/admin/products" className="text-stone-500 hover:text-stone-900 transition-colors">Products</Link>
-              <Link href="/admin/transactions" className="text-stone-500 hover:text-stone-900 transition-colors">Transactions</Link>
-              <Link href="/admin/users" className="text-stone-500 hover:text-stone-900 transition-colors">Users</Link>
-            </div>
-          </div>
-          <div className="flex items-center gap-6">
-            <UserButton />
-          </div>
-        </div>
-      </nav>
+      <AdminNavbar />
 
-      <main className="flex-grow max-w-7xl mx-auto px-6 py-8 w-full">
+      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full">
         {children}
       </main>
     </div>

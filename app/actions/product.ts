@@ -264,3 +264,61 @@ export async function deleteProduct(id: string) {
   revalidatePath("/");
   return { success: true };
 }
+
+export async function deleteProducts(ids: string[]) {
+  if (!ids.length) return { success: false, message: "No IDs provided" };
+
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  // Verify admin status
+  const { data: user } = await supabase
+    .from("User")
+    .select("role")
+    .eq("clerkId", userId)
+    .single();
+
+  if (!user || user.role !== "admin") {
+    throw new Error("Only admins can delete products");
+  }
+
+  // 1. Get all products to find image URLs to delete from storage
+  const { data: products } = await supabase
+    .from("Product")
+    .select("imageUrl, variants:ProductVariant(imageUrl)")
+    .in("id", ids);
+
+  if (products && products.length > 0) {
+    const imagesToDelete: string[] = [];
+    products.forEach(product => {
+      if (product.imageUrl) imagesToDelete.push(product.imageUrl);
+      // @ts-ignore
+      product.variants?.forEach((v: any) => {
+        if (v.imageUrl) imagesToDelete.push(v.imageUrl);
+      });
+    });
+
+    const pathsToDelete = imagesToDelete
+      .map(url => {
+        const parts = url.split('/products/');
+        return parts.length > 1 ? `products/${parts[1]}` : null;
+      })
+      .filter(Boolean) as string[];
+
+    if (pathsToDelete.length > 0) {
+      await supabase.storage.from("products").remove(pathsToDelete);
+    }
+  }
+
+  // 2. Delete the products
+  const { error } = await supabase
+    .from("Product")
+    .delete()
+    .in("id", ids);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/products");
+  revalidatePath("/");
+  return { success: true };
+}

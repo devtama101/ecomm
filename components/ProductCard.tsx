@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { createMultiItemTransaction } from "@/actions/payment.action";
+import { useUIStore } from "@/store/uiStore";
 
 interface ProductCardProps {
   product: any;
@@ -15,6 +16,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const { openSignIn } = useClerk();
   const addItem = useCartStore((s) => s.addItem);
   const [isLoading, setIsLoading] = useState(false);
+  const { addToast } = useUIStore();
 
   // Get first available variant
   const defaultVariant = product.variants?.find((v: any) => v.stock > 0) || product.variants?.[0];
@@ -29,7 +31,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     }
 
     if (!defaultVariant) {
-      alert("This product is currently out of stock.");
+      addToast("This product is currently out of stock.", "error");
       return;
     }
 
@@ -44,7 +46,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     });
 
     // Optional: show a small toast or feedback
-    alert(`Added ${product.name} (${defaultVariant.size} - ${defaultVariant.color}) to cart!`);
+    addToast(`Added ${product.name} (${defaultVariant.size} - ${defaultVariant.color}) to cart!`, "success");
   };
 
   const handleBuyNow = async (e: React.MouseEvent) => {
@@ -57,7 +59,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     }
 
     if (!defaultVariant) {
-      alert("This product is currently out of stock.");
+      addToast("This product is currently out of stock.", "error");
       return;
     }
 
@@ -80,15 +82,15 @@ export default function ProductCard({ product }: ProductCardProps) {
             window.location.href = "/dashboard";
           },
           onError: function () {
-            alert("Payment failed! Please try again.");
+            addToast("Payment failed! Please try again.", "error");
           },
         });
       } else {
-        alert(result.message || "Failed to initiate payment");
+        addToast(result.message || "Failed to initiate payment", "error");
       }
     } catch (error) {
       console.error("Buy Now Error:", error);
-      alert("Something went wrong. Please try again.");
+      addToast("Something went wrong. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }

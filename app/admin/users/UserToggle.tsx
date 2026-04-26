@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toggleUserRole } from "@/app/actions/user";
+import { useUIStore } from "@/store/uiStore";
 
 export default function UserToggle({ 
   clerkId, 
@@ -13,6 +14,7 @@ export default function UserToggle({
   isSelf: boolean;
 }) {
   const [isLoading, setIsLoading] = useState(false);
+  const { addToast } = useUIStore();
 
   const handleToggle = async () => {
     if (isSelf) return;
@@ -20,8 +22,9 @@ export default function UserToggle({
     setIsLoading(true);
     try {
       await toggleUserRole(clerkId, currentRole);
+      addToast(`User ${currentRole === "admin" ? "demoted" : "promoted"} successfully`, "success");
     } catch (error: any) {
-      alert(error.message);
+      addToast(error.message, "error");
     } finally {
       setIsLoading(false);
     }

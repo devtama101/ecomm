@@ -5,6 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import VisitTracker from "@/components/VisitTracker";
+import { ToastContainer, ModalContainer } from "@/components/ui/UIOverlay";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +36,8 @@ export default function RootLayout({
       >
         <body className="min-h-full flex flex-col" suppressHydrationWarning>
           <VisitTracker />
+          <ToastContainer />
+          <ModalContainer />
           {children}
           <Analytics />
           <Script

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { deleteProduct } from "@/app/actions/product";
 import { useRouter } from "next/navigation";
+import { useUIStore } from "@/store/uiStore";
 
 interface DeleteProductButtonProps {
   productId: string;
@@ -17,23 +18,29 @@ export default function DeleteProductButton({
 }: DeleteProductButtonProps) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { openModal, addToast } = useUIStore();
 
-  const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${productName}"? This action cannot be undone.`)) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await deleteProduct(productId);
-      if (variant === "button") {
-        router.push("/admin/products");
+  const handleDelete = () => {
+    openModal({
+      title: "Delete Product",
+      message: `Are you sure you want to delete "${productName}"? This action cannot be undone and will remove all associated images.`,
+      confirmLabel: "Delete Product",
+      variant: "danger",
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          await deleteProduct(productId);
+          addToast("Product deleted successfully", "success");
+          if (variant === "button") {
+            router.push("/admin/products");
+          }
+        } catch (error: any) {
+          addToast(error.message || "Failed to delete product", "error");
+        } finally {
+          setLoading(false);
+        }
       }
-    } catch (error: any) {
-      alert(error.message || "Failed to delete product");
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   if (variant === "button") {

@@ -1,4 +1,5 @@
 "use client";
+import { useUIStore } from "@/store/uiStore";
 
 declare global {
   interface Window {
@@ -7,25 +8,27 @@ declare global {
 }
 
 export default function PayButton({ snapToken }: { snapToken: string }) {
+  const { addToast } = useUIStore();
+
   const handlePay = () => {
     if (window.snap) {
       window.snap.pay(snapToken, {
         onSuccess: function () {
-          alert("Payment successful! Refreshing...");
-          window.location.reload();
+          addToast("Payment successful! Refreshing...", "success");
+          setTimeout(() => window.location.reload(), 2000);
         },
         onPending: function () {
-          alert("Waiting for your payment!");
+          addToast("Waiting for your payment!", "info");
         },
         onError: function () {
-          alert("Payment failed!");
+          addToast("Payment failed!", "error");
         },
         onClose: function () {
-          alert("You closed the popup without finishing the payment");
+          addToast("You closed the payment popup.", "info");
         },
       });
     } else {
-      alert("Midtrans script not loaded yet.");
+      addToast("Midtrans script not loaded yet.", "error");
     }
   };
 
