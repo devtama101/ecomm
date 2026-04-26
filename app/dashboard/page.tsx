@@ -43,6 +43,16 @@ export default async function DashboardPage() {
       .single();
     dbUser = data;
     if (!dbUser) throw new Error("Could not sync or find user");
+  } catch (syncError) {
+    console.error("[Dashboard] Sync error:", syncError);
+    // Fallback: try to find user
+    const { data: existingUser } = await supabase
+      .from("User")
+      .select("*")
+      .eq("clerkId", userId)
+      .single();
+    dbUser = existingUser;
+    if (!dbUser) throw new Error("Could not find user after sync error");
   }
 
   if (dbUser.role === 'admin') {
