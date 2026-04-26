@@ -25,6 +25,7 @@ The revised order follows a natural dependency chain:
 | 6 | — | Shopping Cart | 🔲 TODO | Collect items before checkout |
 | 7 | 3 | Payment Integration (Midtrans) | ✅ Done | Now there's something to pay for |
 | 8 | 4 | Webhook & Order Status | ✅ Done | Process the payments you just enabled |
+| 9 | — | Next.js 16+ Migration & Stabilization | ✅ Done | Adapt to new conventions and fix build-time type errors |
 
 ---
 
@@ -38,3 +39,4 @@ The revised order follows a natural dependency chain:
 - `phase-6-shopping-cart.md` — Cart store, UI, multi-item checkout
 - `phase-7-payment-integration.md` — Midtrans Snap Token, checkout flow
 - `phase-8-webhook-orders.md` — Webhook listener, order status updates
+- `phase-9-nextjs16-migration.md` — Middleware to Proxy transition, type hardening

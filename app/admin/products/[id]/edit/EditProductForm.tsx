@@ -10,12 +10,12 @@ export default function EditProductForm({ product }: { product: any }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(product.imageUrl);
-  const [variants, setVariants] = useState<{ size: string; color: string; stock: number }[]>(
+  const [variants, setVariants] = useState<{ size: string; color: string; stock: number; imageUrl?: string }[]>(
     product.variants || []
   );
 
   const addVariant = () => {
-    setVariants([...variants, { size: "M", color: "Black", stock: 10 }]);
+    setVariants([...variants, { size: "M", color: "Black", stock: 10, imageUrl: "" }]);
   };
 
   const removeVariant = (index: number) => {
