@@ -12,37 +12,63 @@ const supabase = createClient(
 );
 
 export default async function DashboardPage() {
+  const { userId } = await auth()
+  const user = await currentUser()
+  
+  if (!user || !userId) {
+    redirect('/')
+  }
+
+  let dbUser;
   try {
-    const { userId } = await auth()
+    // 1. Robust Sync using Supabase
+    const { data, error } = await supabase
+      .from("User")
+      .upsert(
+        { 
+          clerkId: userId, 
+          email: user.emailAddresses[0]?.emailAddress || "", 
+          role: 'user' 
+        }, 
+        { onConflict: 'clerkId' }
+      )
+      .select()
+      .single();
+
+    if (error) throw error;
+    dbUser = data;
+  } catch (syncError) {
+    console.error("[Dashboard] Sync error:", syncError);
+    // Fallback: try to find user
+    const { data: existingUser } = await supabase
+      .from("User")
+      .select("*")
+      .eq("clerkId", userId)
+      .single();
+    dbUser = existingUser;
+    if (!dbUser) throw new Error("Could not sync or find user");
+  }
+
+  if (dbUser.role === 'admin') {
+    redirect('/admin')
+  }
+
+  let transactions = [];
+  try {
+    // 2. Fetch Transactions using Supabase
+    const { data, error } = await supabase
+      .from("Transaction")
+      .select("*, product:Product(*)")
+      .eq("userId", dbUser.id)
+      .order("createdAt", { ascending: false });
     
-    // Fetch user from Clerk
-    const user = await currentUser()
-    if (!user) {
-      redirect('/')
-    }
+    if (error) throw error;
+    transactions = data || [];
+  } catch (fetchError) {
+    console.error("[Dashboard] Fetch error:", fetchError);
+  }
 
-    // Ensure user exists in our DB (Robust sync)
-    const dbUser = await prisma.user.upsert({
-      where: { clerkId: userId as string },
-      update: { email: user.emailAddresses[0].emailAddress },
-      create: {
-        clerkId: userId as string,
-        email: user.emailAddresses[0].emailAddress,
-        role: 'user'
-      }
-    })
-
-    if (dbUser.role === 'admin') {
-      redirect('/admin')
-    }
-
-    // Fetch transactions using Prisma
-    const transactions = await prisma.transaction.findMany({
-      where: { userId: dbUser.id },
-      include: { product: true },
-      orderBy: { createdAt: 'desc' }
-    })
-
+  try {
     return (
       <div className="min-h-screen bg-[#fdfbf7] text-stone-800 selection:bg-orange-500/30">
         <nav className="w-full border-b border-stone-200 bg-white/80 backdrop-blur-xl">

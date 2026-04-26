@@ -13,16 +13,21 @@ export async function POST() {
 
     const email = user.emailAddresses[0].emailAddress;
 
-    // Upsert user in our database
-    await prisma.user.upsert({
-      where: { clerkId: userId },
-      update: { email },
-      create: {
-        clerkId: userId,
-        email,
-        role: "user",
-      },
-    });
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    // Upsert user in our database using Supabase
+    const { error: syncError } = await supabase
+      .from("User")
+      .upsert(
+        { clerkId: userId, email, role: "user" },
+        { onConflict: "clerkId" }
+      );
+
+    if (syncError) throw syncError;
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -30,3 +35,4 @@ export async function POST() {
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
+ 
