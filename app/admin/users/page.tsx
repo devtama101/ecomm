@@ -39,7 +39,8 @@ export default async function AdminUsersPage() {
       </div>
 
       <div className="bg-white rounded-3xl overflow-hidden border border-stone-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-        <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-stone-200 scrollbar-track-transparent">
+          <table className="w-full text-left border-collapse min-w-[800px]">
           <thead>
             <tr className="border-b border-stone-50">
               <th className="px-8 py-5 text-xs font-bold uppercase tracking-widest text-stone-400">User</th>
@@ -78,5 +79,6 @@ export default async function AdminUsersPage() {
         </table>
       </div>
     </div>
+  </div>
   );
 }

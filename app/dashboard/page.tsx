@@ -3,6 +3,7 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import Link from 'next/link'
 import { createClient } from "@supabase/supabase-js"
 import { redirect } from 'next/navigation'
+import { prisma } from '@/lib/prisma'
 import PayButton from '@/components/PayButton'
 
 const supabase = createClient(
@@ -13,35 +14,38 @@ const supabase = createClient(
 export default async function DashboardPage() {
   const { userId } = await auth()
   
-  if (!userId) {
+  // Fetch user from Clerk
+  const user = await currentUser()
+  if (!user) {
     redirect('/')
   }
 
-  const user = await currentUser()
+  // Ensure user exists in our DB (Lazy sync)
+  let dbUser = await prisma.user.findUnique({
+    where: { clerkId: userId }
+  })
 
-  // Fetch dbUser
-  const { data: dbUser } = await supabase
-    .from("User")
-    .select("id, role")
-    .eq("clerkId", userId)
-    .single()
+  if (!dbUser) {
+    dbUser = await prisma.user.create({
+      data: {
+        clerkId: userId,
+        email: user.emailAddresses[0].emailAddress,
+        role: 'user'
+      }
+    })
+  }
 
-  if (dbUser?.role === 'admin') {
+  if (dbUser.role === 'admin') {
     redirect('/admin')
   }
 
-  let transactions: any[] = []
-  if (dbUser) {
-    const { data: txs } = await supabase
-      .from("Transaction")
-      .select("*, Product(name)")
-      .eq("userId", dbUser.id)
-      .order('createdAt', { ascending: false })
-      
-    if (txs) {
-      transactions = txs
-    }
-  }
+  // Fetch transactions using Prisma
+  const transactions = await prisma.transaction.findMany({
+    where: { userId: dbUser.id },
+    include: { product: true },
+    orderBy: { createdAt: 'desc' }
+  })
+
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] text-stone-800 selection:bg-orange-500/30">
@@ -63,7 +67,7 @@ export default async function DashboardPage() {
           <p className="text-stone-500">Welcome back, {user?.firstName}. View and manage your recent transactions.</p>
         </div>
 
-        <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
           {transactions.length === 0 ? (
             <div className="p-16 text-center flex flex-col items-center justify-center min-h-[400px]">
               <div className="w-24 h-24 bg-stone-100 rounded-full flex items-center justify-center mb-6 border border-stone-200 relative">
@@ -79,8 +83,8 @@ export default async function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-stone-200 scrollbar-track-transparent">
+              <table className="w-full text-left border-collapse min-w-[800px]">
                 <thead>
                   <tr className="border-b border-stone-200 bg-stone-50 text-xs uppercase tracking-widest text-stone-500">
                     <th className="px-6 py-4 font-semibold">Order ID</th>
@@ -97,7 +101,7 @@ export default async function DashboardPage() {
                         {tx.orderId}
                       </td>
                       <td className="px-6 py-5 text-sm font-medium text-stone-900">
-                        {tx.Product?.name || "Unknown Product"}
+                        {tx.product?.name || "Unknown Product"}
                       </td>
                       <td className="px-6 py-5 text-sm text-stone-500">
                         {new Date(tx.createdAt).toLocaleDateString('en-US', {

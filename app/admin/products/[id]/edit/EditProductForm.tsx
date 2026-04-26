@@ -11,7 +11,7 @@ export default function EditProductForm({ product }: { product: any }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(product.imageUrl);
-  const { addToast } = useUIStore();
+  const { addToast, openModal } = useUIStore();
   const [variants, setVariants] = useState<{ size: string; color: string; stock: number; imageUrl?: string }[]>(
     product.variants || []
   );
@@ -21,7 +21,15 @@ export default function EditProductForm({ product }: { product: any }) {
   };
 
   const removeVariant = (index: number) => {
-    setVariants(variants.filter((_, i) => i !== index));
+    openModal({
+      title: "Remove Variant",
+      message: "Are you sure you want to remove this variant? Any unsaved changes to this variant will be lost.",
+      confirmLabel: "Remove",
+      variant: "danger",
+      onConfirm: async () => {
+        setVariants(variants.filter((_, i) => i !== index));
+      }
+    });
   };
 
   const updateVariant = (index: number, field: string, value: string | number) => {

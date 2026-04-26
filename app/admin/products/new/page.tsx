@@ -4,11 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createProduct } from "@/app/actions/product";
 import Link from "next/link";
+import { useUIStore } from "@/store/uiStore";
 
 export default function NewProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const { addToast, openModal } = useUIStore();
   const [variants, setVariants] = useState<{ size: string; color: string; stock: number; imageUrl?: string }[]>([]);
 
   const addVariant = () => {
@@ -16,7 +17,15 @@ export default function NewProductPage() {
   };
 
   const removeVariant = (index: number) => {
-    setVariants(variants.filter((_, i) => i !== index));
+    openModal({
+      title: "Remove Variant",
+      message: "Remove this variant? Changes will be lost.",
+      confirmLabel: "Remove",
+      variant: "danger",
+      onConfirm: async () => {
+        setVariants(variants.filter((_, i) => i !== index));
+      }
+    });
   };
 
   const updateVariant = (index: number, field: string, value: string | number) => {
@@ -28,16 +37,15 @@ export default function NewProductPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
-    
     const formData = new FormData(e.currentTarget);
     formData.append("variants", JSON.stringify(variants));
     
     try {
       await createProduct(formData);
+      addToast("Product created successfully", "success");
       router.push("/admin/products");
     } catch (err: any) {
-      setError(err.message || "Failed to create product");
+      addToast(err.message || "Failed to create product", "error");
     } finally {
       setLoading(false);
     }
@@ -54,11 +62,6 @@ export default function NewProductPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8 bg-white p-8 rounded-3xl border border-stone-200 shadow-sm">
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm">
-            {error}
-          </div>
-        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-6">

@@ -27,8 +27,8 @@ export default async function AdminTransactionsPage() {
       </div>
 
       <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto scrollbar-hide">
-          <table className="w-full text-left text-sm whitespace-nowrap">
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-stone-200 scrollbar-track-transparent">
+          <table className="w-full text-left text-sm whitespace-nowrap min-w-[1000px]">
             <thead>
               <tr className="border-b border-stone-200 bg-stone-50 text-stone-500">
                 <th className="px-6 py-4 font-medium uppercase tracking-wider text-[10px]">Order ID</th>

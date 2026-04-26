@@ -59,7 +59,7 @@ export default function AdminNavbar() {
         </div>
 
         <div className="flex items-center gap-3 sm:gap-6">
-          <UserButton afterSignOutUrl="/" />
+          <UserButton />
         </div>
       </div>
 

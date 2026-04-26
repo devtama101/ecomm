@@ -126,8 +126,8 @@ export default function ProductListManager({ products }: ProductListManagerProps
         </div>
 
         {/* Desktop View: Table */}
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="hidden lg:block overflow-x-auto scrollbar-thin scrollbar-thumb-stone-200 scrollbar-track-transparent">
+          <table className="w-full text-left text-sm whitespace-nowrap min-w-[1000px]">
             <thead>
               <tr className="border-b border-stone-200 bg-stone-50 text-stone-500">
                 <th className="px-6 py-4 w-10">
