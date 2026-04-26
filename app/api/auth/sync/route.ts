@@ -19,11 +19,21 @@ export async function POST() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    // Upsert user in our database using Supabase
+    // Check if user exists to preserve role
+    const { data: existingUser } = await supabase
+      .from("User")
+      .select("role")
+      .eq("clerkId", userId)
+      .single();
+
     const { error: syncError } = await supabase
       .from("User")
       .upsert(
-        { clerkId: userId, email, role: "user" },
+        { 
+          clerkId: userId, 
+          email, 
+          role: existingUser ? existingUser.role : "user" 
+        },
         { onConflict: "clerkId" }
       );
 
