@@ -73,12 +73,14 @@ npx prisma migrate dev
 npm run dev
 ```
 
-### 🌐 Hosting & Deployment (Vercel)
-When deploying to Vercel, ensure you use the following Build Command:
-```bash
-npx prisma generate && next build
-```
-**Important**: This project uses the `proxy.ts` convention (Next.js v16+) instead of `middleware.ts`.
+### Hosting & Deployment
+
+This project is optimized for deployment on **Vercel**.
+
+1.  **Build Command**: The build process is automated via `package.json` scripts. Vercel will automatically run `prisma generate` during the `postinstall` phase and as part of `npm run build`.
+    - If you encounter a `PrismaClient has no exported member` error, ensure your local environment runs `npx prisma generate` and that the Vercel build command is set to `npm run build`.
+2.  **Proxy Convention**: This project uses Next.js v16+ patterns. The traditional `middleware.ts` is replaced by `proxy.ts`. Do not rename this file back to `middleware.ts` as it will break the build.
+3.  **Environment Variables**: Ensure all variables from `.env.example` are set in the Vercel Dashboard, specifically `NEXT_PUBLIC_APP_URL` and `CLERK_SECRET_KEY`.
 
 ---
 
