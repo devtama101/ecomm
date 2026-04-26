@@ -21,7 +21,7 @@ The revised order follows a natural dependency chain:
 | 2 | 2 | Database & ORM | ✅ Done | Need storage before any data |
 | 3 | 5 | Product Catalog & Storefront | ✅ Done | Can't sell without products to display |
 | 4 | — | Product Details & Variants | ✅ Done | Buyers need sizes/colors/gallery before buying |
-| 5 | 6 | Admin Dashboard & Roles | ✅ Done | Manage the products you just built |
+| 5 | 6 | Admin Dashboard & User Management | ✅ Done | Manage products, analytics, and user roles |
 | 6 | — | Shopping Cart | 🔲 TODO | Collect items before checkout |
 | 7 | 3 | Payment Integration (Midtrans) | ✅ Done | Now there's something to pay for |
 | 8 | 4 | Webhook & Order Status | ✅ Done | Process the payments you just enabled |

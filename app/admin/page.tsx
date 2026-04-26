@@ -39,6 +39,7 @@ export default async function AdminOverviewPage(props: { searchParams?: Promise<
     .select("id, name, viewCount, price, imageUrl");
 
   // Sort products
+  // Sort products
   const topProducts = (products || []).map(p => ({
     ...p,
     soldCount: salesCount[p.id] || 0
@@ -47,17 +48,33 @@ export default async function AdminOverviewPage(props: { searchParams?: Promise<
       if (b.soldCount !== a.soldCount) {
         return b.soldCount - a.soldCount;
       }
-      // If sold count is same, fallback to most viewed
       return b.viewCount - a.viewCount;
     }
-    
-    // Default to 'viewed'
     if (b.viewCount !== a.viewCount) {
       return b.viewCount - a.viewCount;
     }
-    // If viewed count is same, fallback to most sold
     return b.soldCount - a.soldCount;
   });
+
+  // Fetch visitor data
+  const { data: visits } = await supabase
+    .from("Visit")
+    .select("city, country")
+    .order("createdAt", { ascending: false })
+    .limit(1000);
+
+  const locationStats: Record<string, number> = {};
+  visits?.forEach(v => {
+    if (v.city && v.country) {
+      const key = `${v.city}, ${v.country}`;
+      locationStats[key] = (locationStats[key] || 0) + 1;
+    }
+  });
+
+  const topLocations = Object.entries(locationStats)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -68,14 +85,51 @@ export default async function AdminOverviewPage(props: { searchParams?: Promise<
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div className="bg-white rounded-3xl p-8 border border-stone-200 shadow-sm flex flex-col justify-center">
-          <p className="text-stone-500 font-medium mb-1">Total Products</p>
+          <p className="text-stone-500 font-medium mb-1 text-sm uppercase tracking-wider">Total Products</p>
           <p className="text-4xl font-black text-stone-900">{productCount || 0}</p>
         </div>
         <div className="bg-white rounded-3xl p-8 border border-stone-200 shadow-sm flex flex-col justify-center">
-          <p className="text-stone-500 font-medium mb-1">Total Transactions</p>
+          <p className="text-stone-500 font-medium mb-1 text-sm uppercase tracking-wider">Total Orders</p>
           <p className="text-4xl font-black text-stone-900">{transactionCount || 0}</p>
+        </div>
+        <div className="bg-white rounded-3xl p-8 border border-stone-200 shadow-sm flex flex-col justify-center">
+          <p className="text-stone-500 font-medium mb-1 text-sm uppercase tracking-wider">Live Visitors</p>
+          <p className="text-4xl font-black text-orange-600">{(visits?.length || 0).toLocaleString()}</p>
+        </div>
+      </div>
+
+      {/* Visitor Origin Section */}
+      <div className="mb-12">
+        <h2 className="text-2xl font-bold text-stone-900 tracking-tight mb-6">Visitor Origin</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
+            <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-6">Top Locations</h3>
+            <div className="space-y-4">
+              {topLocations.map((loc, i) => (
+                <div key={loc.name} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center text-[10px] font-black text-stone-400">{i + 1}</span>
+                    <span className="font-bold text-stone-700">{loc.name}</span>
+                  </div>
+                  <span className="font-black text-stone-900">{loc.count}</span>
+                </div>
+              ))}
+              {topLocations.length === 0 && <p className="text-stone-400 italic">No location data yet.</p>}
+            </div>
+          </div>
+          
+          <div className="bg-stone-900 rounded-3xl p-8 text-white flex flex-col justify-center relative overflow-hidden">
+            <div className="relative z-10">
+              <h3 className="text-orange-400 text-xs font-black uppercase tracking-[0.2em] mb-2">Global Impact</h3>
+              <p className="text-xl font-medium leading-relaxed">
+                Your store is currently reaching customers in <span className="text-white font-black underline decoration-orange-500 underline-offset-4">{new Set(visits?.map(v => v.country)).size} countries</span>.
+              </p>
+            </div>
+            {/* Abstract decorative element */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+          </div>
         </div>
       </div>
 
@@ -97,7 +151,7 @@ export default async function AdminOverviewPage(props: { searchParams?: Promise<
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
+      <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm mb-12">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="text-xs uppercase bg-stone-50 text-stone-500 font-semibold tracking-wider">

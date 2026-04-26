@@ -45,6 +45,7 @@ export default async function AdminLayout({
               <Link href="/admin" className="text-stone-500 hover:text-stone-900 transition-colors">Overview</Link>
               <Link href="/admin/products" className="text-stone-500 hover:text-stone-900 transition-colors">Products</Link>
               <Link href="/admin/transactions" className="text-stone-500 hover:text-stone-900 transition-colors">Transactions</Link>
+              <Link href="/admin/users" className="text-stone-500 hover:text-stone-900 transition-colors">Users</Link>
             </div>
           </div>
           <div className="flex items-center gap-6">

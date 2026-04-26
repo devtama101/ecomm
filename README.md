@@ -13,6 +13,7 @@ A state-of-the-art e-commerce solution built for premium brands. Featuring a sea
 
 ### 🛡️ Admin Suite
 - **Sales Analytics**: Real-time Gross Revenue, Conversion Rates, and Recent Sales tracking.
+- **User Management**: Simple interface to promote or demote users to Administrative roles.
 - **Product Management**: Full CRUD for products with per-variant image and stock management.
 - **Order Tracking**: Monitor order status updates from Midtrans via secure webhooks.
 - **RBAC**: Secure role-based access control protecting administrative routes.
@@ -71,6 +72,13 @@ npx prisma migrate dev
 ```bash
 npm run dev
 ```
+
+### 🌐 Hosting & Deployment (Vercel)
+When deploying to Vercel, ensure you use the following Build Command:
+```bash
+npx prisma generate && next build
+```
+**Important**: This project uses the `proxy.ts` convention (Next.js v16+) instead of `middleware.ts`.
 
 ---
 

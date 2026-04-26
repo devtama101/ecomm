@@ -1,14 +1,14 @@
 import { describe, it, expect, vi } from 'vitest'
-import middleware from './middleware'
+import { proxy } from './proxy'
 
-describe('Middleware', () => {
+describe('Proxy', () => {
   it('should protect /dashboard routes', async () => {
     const mockReq = { url: 'http://localhost:3000/dashboard' } as any
     const mockAuth = { protect: vi.fn() }
     
-    // middleware returns our mock from vitest.setup.ts
+    // proxy returns our mock from vitest.setup.ts
     // In vitest.setup.ts we mapped clerkMiddleware to return the handler directly
-    await (middleware as any)(mockAuth, mockReq)
+    await (proxy as any)(mockAuth, mockReq)
     
     expect(mockAuth.protect).toHaveBeenCalled()
   })
@@ -17,7 +17,7 @@ describe('Middleware', () => {
     const mockReq = { url: 'http://localhost:3000/' } as any
     const mockAuth = { protect: vi.fn() }
     
-    await (middleware as any)(mockAuth, mockReq)
+    await (proxy as any)(mockAuth, mockReq)
     
     expect(mockAuth.protect).not.toHaveBeenCalled()
   })
