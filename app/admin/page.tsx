@@ -100,39 +100,6 @@ export default async function AdminOverviewPage(props: { searchParams?: Promise<
         </div>
       </div>
 
-      {/* Visitor Origin Section */}
-      <div className="mb-12">
-        <h2 className="text-2xl font-bold text-stone-900 tracking-tight mb-6">Visitor Origin</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
-            <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-6">Top Locations</h3>
-            <div className="space-y-4">
-              {topLocations.map((loc, i) => (
-                <div key={loc.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center text-[10px] font-black text-stone-400">{i + 1}</span>
-                    <span className="font-bold text-stone-700">{loc.name}</span>
-                  </div>
-                  <span className="font-black text-stone-900">{loc.count}</span>
-                </div>
-              ))}
-              {topLocations.length === 0 && <p className="text-stone-400 italic">No location data yet.</p>}
-            </div>
-          </div>
-          
-          <div className="bg-stone-900 rounded-3xl p-8 text-white flex flex-col justify-center relative overflow-hidden">
-            <div className="relative z-10">
-              <h3 className="text-orange-400 text-xs font-black uppercase tracking-[0.2em] mb-2">Global Impact</h3>
-              <p className="text-xl font-medium leading-relaxed">
-                Your store is currently reaching customers in <span className="text-white font-black underline decoration-orange-500 underline-offset-4">{new Set(visits?.map(v => v.country)).size} countries</span>.
-              </p>
-            </div>
-            {/* Abstract decorative element */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-          </div>
-        </div>
-      </div>
-
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h2 className="text-2xl font-bold text-stone-900 tracking-tight">Product Traffic</h2>
         <div className="flex gap-2">
@@ -210,6 +177,39 @@ export default async function AdminOverviewPage(props: { searchParams?: Promise<
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Visitor Origin Section */}
+      <div className="mb-12">
+        <h2 className="text-2xl font-bold text-stone-900 tracking-tight mb-6">Visitor Origin</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
+            <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-6">Top Locations</h3>
+            <div className="space-y-4">
+              {topLocations.map((loc, i) => (
+                <div key={loc.name} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center text-[10px] font-black text-stone-400">{i + 1}</span>
+                    <span className="font-bold text-stone-700">{loc.name}</span>
+                  </div>
+                  <span className="font-black text-stone-900">{loc.count}</span>
+                </div>
+              ))}
+              {topLocations.length === 0 && <p className="text-stone-400 italic">No location data yet.</p>}
+            </div>
+          </div>
+          
+          <div className="bg-stone-900 rounded-3xl p-8 text-white flex flex-col justify-center relative overflow-hidden">
+            <div className="relative z-10">
+              <h3 className="text-orange-400 text-xs font-black uppercase tracking-[0.2em] mb-2">Global Impact</h3>
+              <p className="text-xl font-medium leading-relaxed">
+                Your store is currently reaching customers in <span className="text-white font-black underline decoration-orange-500 underline-offset-4">{new Set(visits?.map(v => v.country)).size} countries</span>.
+              </p>
+            </div>
+            {/* Abstract decorative element */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+          </div>
         </div>
       </div>
     </div>
