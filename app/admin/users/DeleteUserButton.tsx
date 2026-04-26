@@ -22,7 +22,8 @@ export default function DeleteUserButton({
     openModal({
       title: "Delete User",
       message: `Are you sure you want to delete ${userEmail}? This will also delete all their associated data. This action cannot be undone.`,
-      confirmText: "Delete User",
+      confirmLabel: "Delete User",
+      variant: "danger",
       onConfirm: async () => {
         setIsLoading(true);
         try {
