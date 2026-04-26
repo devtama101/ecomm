@@ -7,7 +7,8 @@ During deployment to Vercel, the build failed due to the deprecation of the `mid
 1.  **Rename Middleware to Proxy**: Migrated `middleware.ts` to `proxy.ts` and renamed the exported function to `proxy`.
 2.  **Update Test Suite**: Renamed `middleware.test.ts` to `proxy.test.ts` and updated all internal references.
 3.  **Harden Product Form Types**: Explicitly added `imageUrl` to the `variants` state type in `EditProductForm` and `NewProductPage` to ensure build stability and better DX.
-4.  **Deployment Documentation**: Added a specific "Hosting & Deployment" section to the README to guide future contributors on the required build command and file conventions.
+4.  **Cart Store Type Correction**: Resolved a `CartItem` type mismatch in `ProductCard` by removing the redundant `quantity` property from `addItem` calls, adhering to the `Omit<CartItem, "quantity">` interface designed to centralize inventory logic.
+5.  **Deployment Documentation**: Added a specific "Hosting & Deployment" section to the README to guide future contributors on the required build command and file conventions.
 
 ## Rationale
 Following the official Next.js migration path is critical for successful CI/CD and long-term project health. Strictly typing the variant state prevents "property does not exist" errors that frequently block production builds.

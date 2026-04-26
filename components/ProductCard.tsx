@@ -41,7 +41,6 @@ export default function ProductCard({ product }: ProductCardProps) {
       imageUrl: defaultVariant.imageUrl || product.imageUrl,
       size: defaultVariant.size,
       color: defaultVariant.color,
-      quantity: 1,
     });
 
     // Optional: show a small toast or feedback

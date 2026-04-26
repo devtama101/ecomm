@@ -89,7 +89,7 @@ export async function createSnapTransaction(productId: string) {
         last_name: user.lastName || "",
       },
       callbacks: {
-        finish: "http://localhost:3000/dashboard"
+        finish: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard`
       },
       usage_limit: 1, // Only allow this token to be used once
     };
@@ -233,7 +233,7 @@ export async function createMultiItemTransaction(items: CartCheckoutItem[]) {
         last_name: user.lastName || "",
       },
       callbacks: {
-        finish: "http://localhost:3000/dashboard",
+        finish: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard`,
       },
       usage_limit: 1,
     };
