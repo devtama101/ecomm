@@ -205,3 +205,62 @@ export async function incrementProductView(id: string) {
       .eq("id", id);
   }
 }
+
+export async function deleteProduct(id: string) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  // Verify admin status
+  const { data: user } = await supabase
+    .from("User")
+    .select("role")
+    .eq("clerkId", userId)
+    .single();
+
+  if (!user || user.role !== "admin") {
+    throw new Error("Only admins can delete products");
+  }
+
+  // 1. Get product to find image URLs to delete from storage
+  const { data: product } = await supabase
+    .from("Product")
+    .select("imageUrl, variants:ProductVariant(imageUrl)")
+    .eq("id", id)
+    .single();
+
+  if (product) {
+    const imagesToDelete = [];
+    if (product.imageUrl) imagesToDelete.push(product.imageUrl);
+    
+    // @ts-ignore
+    product.variants?.forEach((v: any) => {
+      if (v.imageUrl) imagesToDelete.push(v.imageUrl);
+    });
+
+    // Extract file paths from public URLs for Supabase storage deletion
+    // Example: https://.../storage/v1/object/public/products/filename.jpg -> products/filename.jpg
+    const pathsToDelete = imagesToDelete
+      .map(url => {
+        const parts = url.split('/products/');
+        return parts.length > 1 ? `products/${parts[1]}` : null;
+      })
+      .filter(Boolean) as string[];
+
+    if (pathsToDelete.length > 0) {
+      await supabase.storage.from("products").remove(pathsToDelete);
+    }
+  }
+
+  // 2. Delete the product (cascades should handle ProductImage and ProductVariant if set in DB, 
+  // but if Prisma didn't push correctly we do manual or rely on foreign keys)
+  const { error } = await supabase
+    .from("Product")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/products");
+  revalidatePath("/");
+  return { success: true };
+}

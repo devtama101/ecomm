@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { updateProduct } from "@/app/actions/product";
 import Link from "next/link";
+import DeleteProductButton from "@/components/admin/DeleteProductButton";
 
 export default function EditProductForm({ product }: { product: any }) {
   const router = useRouter();
@@ -228,7 +228,12 @@ export default function EditProductForm({ product }: { product: any }) {
           </div>
         </div>
 
-        <div className="pt-6 border-t border-stone-100 flex justify-end">
+        <div className="pt-6 border-t border-stone-100 flex justify-between items-center">
+          <DeleteProductButton 
+            productId={product.id} 
+            productName={product.name} 
+            variant="button" 
+          />
           <button 
             type="submit" 
             disabled={loading}

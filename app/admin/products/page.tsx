@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
+import DeleteProductButton from "@/components/admin/DeleteProductButton";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -72,7 +72,10 @@ export default async function AdminProductsPage() {
                   {new Date(product.createdAt).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <Link href={`/admin/products/${product.id}/edit`} className="text-orange-600 hover:text-orange-500 font-medium text-xs">Edit</Link>
+                  <div className="flex items-center justify-end gap-3">
+                    <Link href={`/admin/products/${product.id}/edit`} className="text-orange-600 hover:text-orange-500 font-medium text-xs">Edit</Link>
+                    <DeleteProductButton productId={product.id} productName={product.name} />
+                  </div>
                 </td>
               </tr>
             ))}
