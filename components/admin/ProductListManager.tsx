@@ -38,11 +38,15 @@ export default function ProductListManager({ products }: ProductListManagerProps
       variant: "danger",
       onConfirm: async () => {
         try {
-          await deleteProducts(selectedIds);
-          addToast(`${selectedIds.length} products deleted successfully`, "success");
-          setSelectedIds([]);
+          const result = await deleteProducts(selectedIds);
+          if (result.success) {
+            addToast(`${selectedIds.length} products deleted successfully`, "success");
+            setSelectedIds([]);
+          } else {
+            addToast(result.message || "Failed to delete products", "error");
+          }
         } catch (error: any) {
-          addToast(error.message || "Failed to delete products", "error");
+          addToast("An unexpected error occurred", "error");
         }
       }
     });

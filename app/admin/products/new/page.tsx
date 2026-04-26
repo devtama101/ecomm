@@ -41,11 +41,15 @@ export default function NewProductPage() {
     formData.append("variants", JSON.stringify(variants));
     
     try {
-      await createProduct(formData);
-      addToast("Product created successfully", "success");
-      router.push("/admin/products");
+      const result = await createProduct(formData);
+      if (result.success) {
+        addToast("Product created successfully", "success");
+        router.push("/admin/products");
+      } else {
+        addToast(result.message || "Failed to create product", "error");
+      }
     } catch (err: any) {
-      addToast(err.message || "Failed to create product", "error");
+      addToast("An unexpected error occurred", "error");
     } finally {
       setLoading(false);
     }

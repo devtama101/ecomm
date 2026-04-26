@@ -47,11 +47,15 @@ export default function EditProductForm({ product }: { product: any }) {
     formData.append("variants", JSON.stringify(variants));
     
     try {
-      await updateProduct(product.id, formData);
-      addToast("Product updated successfully", "success");
-      router.push("/admin/products");
+      const result = await updateProduct(product.id, formData);
+      if (result.success) {
+        addToast("Product updated successfully", "success");
+        router.push("/admin/products");
+      } else {
+        addToast(result.message || "Failed to update product", "error");
+      }
     } catch (err: any) {
-      addToast(err.message || "Failed to update product", "error");
+      addToast("An unexpected error occurred", "error");
     } finally {
       setLoading(false);
     }

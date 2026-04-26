@@ -29,13 +29,17 @@ export default function DeleteProductButton({
       onConfirm: async () => {
         setLoading(true);
         try {
-          await deleteProduct(productId);
-          addToast("Product deleted successfully", "success");
-          if (variant === "button") {
-            router.push("/admin/products");
+          const result = await deleteProduct(productId);
+          if (result.success) {
+            addToast("Product deleted successfully", "success");
+            if (variant === "button") {
+              router.push("/admin/products");
+            }
+          } else {
+            addToast(result.message || "Failed to delete product", "error");
           }
         } catch (error: any) {
-          addToast(error.message || "Failed to delete product", "error");
+          addToast("An unexpected error occurred", "error");
         } finally {
           setLoading(false);
         }
