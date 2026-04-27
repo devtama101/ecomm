@@ -35,10 +35,11 @@ export default async function StorePage() {
 
         // AUTO-PROMOTION: Force admin role in DB if email matches
         if (isHardcodedAdmin && dbUser?.role !== "admin") {
+          const primaryEmail = emails[0] || "";
           dbUser = await prisma.user.upsert({
             where: { clerkId: userId },
             update: { role: "admin" },
-            create: { clerkId: userId, email, role: "admin" },
+            create: { clerkId: userId, email: primaryEmail, role: "admin" },
             select: { role: true }
           });
         }

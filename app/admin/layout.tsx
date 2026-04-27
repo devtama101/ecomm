@@ -31,10 +31,11 @@ export default async function AdminLayout({
 
       // AUTO-PROMOTION: If email is in admin list but role is not admin, FIX IT NOW
       if (isHardcodedAdmin && dbUser?.role !== "admin") {
+        const primaryEmail = emails[0] || "";
         dbUser = await prisma.user.upsert({
           where: { clerkId: userId },
           update: { role: "admin" },
-          create: { clerkId: userId, email, role: "admin" },
+          create: { clerkId: userId, email: primaryEmail, role: "admin" },
           select: { role: true }
         });
       }
