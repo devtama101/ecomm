@@ -5,41 +5,68 @@ import Navbar from "@/components/Navbar";
 import ProductCard from "@/components/ProductCard";
 
 export default async function StorePage() {
-  const { userId } = await auth();
-
-  const user = await currentUser();
+  let userId: string | null = null;
+  let isAdmin = false;
+  let products: any[] = [];
   let dbUser = null;
-  if (userId) {
-    dbUser = await prisma.user.findUnique({
-      where: { clerkId: userId },
-      select: { role: true }
-    });
 
-    // If logged in but not in DB, create user (Sync)
-    if (!dbUser && user) {
+  try {
+    // 1. Auth check
+    const authResult = await auth();
+    userId = authResult.userId;
+
+    const user = await currentUser();
+
+    if (userId) {
+      // 2. Fetch User from Prisma
       try {
-        const email = user.emailAddresses[0].emailAddress;
-        dbUser = await prisma.user.create({
-          data: { clerkId: userId, email, role: "user" },
+        dbUser = await prisma.user.findUnique({
+          where: { clerkId: userId },
           select: { role: true }
         });
-      } catch (e) {
-        console.error("Home sync error:", e);
+
+        // 3. Sync user if missing
+        if (!dbUser && user) {
+          const email = user.emailAddresses?.[0]?.emailAddress;
+          if (email) {
+            dbUser = await prisma.user.create({
+              data: { clerkId: userId, email, role: "user" },
+              select: { role: true }
+            });
+          }
+        }
+      } catch (dbErr) {
+        console.error("Home Page DB User Error:", dbErr);
+        // Continue even if user fetch fails, they just won't have a role
       }
     }
+
+    isAdmin = dbUser?.role === "admin";
+    
+    if (isAdmin) {
+      redirect("/admin");
+    }
+
+    // 4. Fetch Products
+    try {
+      products = await prisma.product.findMany({
+        where: { isActive: true },
+        include: { variants: true },
+        orderBy: { price: 'desc' }
+      });
+    } catch (prodErr) {
+      console.error("Home Page Products Fetch Error:", prodErr);
+      products = [];
+    }
+
+  } catch (globalErr) {
+    // If it's a redirect, we MUST re-throw it so Next.js handles it
+    if (globalErr instanceof Error && globalErr.message.includes('NEXT_REDIRECT')) {
+      throw globalErr;
+    }
+    console.error("Critical Home Page Error:", globalErr);
   }
 
-  const isAdmin = dbUser?.role === "admin";
-  
-  if (isAdmin) {
-    redirect("/admin");
-  }
-
-  const products = await prisma.product.findMany({
-    where: { isActive: true },
-    include: { variants: true },
-    orderBy: { price: 'desc' }
-  });
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] text-stone-800 selection:bg-orange-200">
@@ -59,11 +86,11 @@ export default async function StorePage() {
 
           {/* Product Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
-            {products?.map((product) => (
-              <ProductCard key={product.id} product={product as any} />
-            ))}
-            
-            {!products?.length && (
+            {products && products.length > 0 ? (
+              products.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))
+            ) : (
               <div className="col-span-full py-24 text-center">
                 <h3 className="text-xl font-bold text-stone-900 mb-2">No items available</h3>
                 <p className="text-stone-500">Check back later for our new collection.</p>
@@ -75,3 +102,4 @@ export default async function StorePage() {
     </div>
   );
 }
+
