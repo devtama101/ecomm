@@ -13,55 +13,55 @@ export default async function DashboardPage() {
     redirect('/')
   }
 
-  let dbUser;
-  try {
-    // 1. Robust Sync using Prisma (bypasses RLS)
-    const existingUser = await prisma.user.findUnique({
-      where: { clerkId: userId },
-      select: { role: true, id: true }
-    });
+  const dbUser = await (async () => {
+    try {
+      // 1. Robust Sync using Prisma (bypasses RLS)
+      const existingUser = await prisma.user.findUnique({
+        where: { clerkId: userId },
+        select: { role: true, id: true }
+      });
 
-    dbUser = await prisma.user.upsert({
-      where: { clerkId: userId },
-      update: { 
-        email: user.emailAddresses[0]?.emailAddress || "",
-        role: existingUser ? existingUser.role : 'user'
-      },
-      create: {
-        clerkId: userId,
-        email: user.emailAddresses[0]?.emailAddress || "",
-        role: 'user'
-      }
-    });
-  } catch (syncError) {
-    console.error("[Dashboard] Sync error:", syncError);
-    dbUser = await prisma.user.findUnique({
-      where: { clerkId: userId }
-    });
-    if (!dbUser) throw new Error("Could not find user after sync error");
-  }
+      return await prisma.user.upsert({
+        where: { clerkId: userId },
+        update: { 
+          email: user.emailAddresses[0]?.emailAddress || "",
+          role: existingUser ? existingUser.role : 'user'
+        },
+        create: {
+          clerkId: userId,
+          email: user.emailAddresses[0]?.emailAddress || "",
+          role: 'user'
+        }
+      });
+    } catch (syncError) {
+      console.error("[Dashboard] Sync error:", syncError);
+      const userFromDb = await prisma.user.findUnique({
+        where: { clerkId: userId }
+      });
+      if (!userFromDb) throw new Error("Could not find user after sync error");
+      return userFromDb;
+    }
+  })();
 
   if (dbUser.role === 'admin') {
     redirect('/admin')
   }
 
-  let transactions = [];
-  try {
-    // 2. Fetch Transactions using Prisma (bypasses RLS)
-    transactions = await prisma.transaction.findMany({
-      where: { userId: dbUser.id },
-      include: {
-        items: {
-          include: {
-            product: true
-          }
+  // 2. Fetch Transactions using Prisma (bypasses RLS)
+  const transactions = await prisma.transaction.findMany({
+    where: { userId: dbUser.id },
+    include: {
+      items: {
+        include: {
+          product: true
         }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-  } catch (fetchError) {
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  }).catch(fetchError => {
     console.error("[Dashboard] Fetch error:", fetchError);
-  }
+    return [];
+  });
 
   try {
     return (
