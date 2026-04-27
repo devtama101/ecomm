@@ -17,6 +17,8 @@ export default async function StorePage() {
     const authResult = await auth();
     userId = authResult.userId;
 
+    const user = await currentUser();
+
     isAdmin = false;
     
     if (userId && user) {
