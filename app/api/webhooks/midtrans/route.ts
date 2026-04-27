@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
@@ -55,55 +50,45 @@ export async function POST(req: Request) {
     }
 
     // 3. Update Transaction status
-    const { data: tx, error: txError } = await supabase
-      .from("Transaction")
-      .update({ status: finalStatus })
-      .eq("orderId", order_id)
-      .select("id")
-      .single();
-
-    if (txError) {
+    const tx = await prisma.transaction.update({
+      where: { orderId: order_id },
+      data: { status: finalStatus }
+    }).catch(txError => {
       console.error("Database update error:", txError);
+      return null;
+    });
+
+    if (!tx) {
       return NextResponse.json({ message: "Transaction not found" }, { status: 404 });
     }
 
     // 4. On settlement: decrement stock and increment sold count
     if (finalStatus === "settlement") {
-      const { data: txItems } = await supabase
-        .from("TransactionItem")
-        .select("productId, variantId, quantity")
-        .eq("transactionId", tx.id);
+      const txItems = await prisma.transactionItem.findMany({
+        where: { transactionId: tx.id }
+      });
 
       if (txItems) {
         for (const item of txItems) {
           if (item.productId) {
-            const { data: product } = await supabase
-              .from("Product")
-              .select("soldCount")
-              .eq("id", item.productId)
-              .single();
-
-            if (product) {
-              await supabase
-                .from("Product")
-                .update({ soldCount: (product.soldCount || 0) + item.quantity })
-                .eq("id", item.productId);
-            }
+            await prisma.product.update({
+              where: { id: item.productId },
+              data: { soldCount: { increment: item.quantity } }
+            }).catch(e => console.error("Error updating product sold count:", e));
           }
 
           // Decrement variant stock
           if (item.variantId) {
-            const { data: variant } = await supabase
-              .from("ProductVariant")
-              .select("stock")
-              .eq("id", item.variantId)
-              .single();
+            const variant = await prisma.productVariant.findUnique({
+              where: { id: item.variantId },
+              select: { stock: true }
+            });
 
             if (variant) {
-              await supabase
-                .from("ProductVariant")
-                .update({ stock: Math.max(0, variant.stock - item.quantity) })
-                .eq("id", item.variantId);
+              await prisma.productVariant.update({
+                where: { id: item.variantId },
+                data: { stock: Math.max(0, variant.stock - item.quantity) }
+              }).catch(e => console.error("Error updating variant stock:", e));
             }
           }
         }

@@ -1,16 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
 import ProductListManager from "@/components/admin/ProductListManager";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { prisma } from "@/lib/prisma";
 
 export default async function AdminProductsPage() {
-  const { data: products } = await supabase
-    .from("Product")
-    .select("*")
-    .order("createdAt", { ascending: false });
+  const products = await prisma.product.findMany({
+    orderBy: { createdAt: 'desc' }
+  });
 
-  return <ProductListManager products={products || []} />;
+  return <ProductListManager products={products as any} />;
 }

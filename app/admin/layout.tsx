@@ -1,12 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { prisma } from "@/lib/prisma";
 import AdminNavbar from "@/components/admin/AdminNavbar";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export default async function AdminLayout({
   children,
@@ -19,12 +14,11 @@ export default async function AdminLayout({
     redirect("/sign-in");
   }
 
-  // Check user role from database
-  const { data: dbUser } = await supabase
-    .from("User")
-    .select("role")
-    .eq("clerkId", userId)
-    .single();
+  // Check user role from database using Prisma (bypasses RLS)
+  const dbUser = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { role: true },
+  });
 
   if (!dbUser || dbUser.role !== "admin") {
     // If not admin, redirect to normal dashboard

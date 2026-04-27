@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
@@ -10,21 +11,24 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+async function checkAdmin() {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const user = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { role: true }
+  });
+
+  if (!user || user.role !== "admin") {
+    throw new Error("Only admins can perform this action");
+  }
+  return userId;
+}
+
 export async function createProduct(formData: FormData) {
   try {
-    const { userId } = await auth();
-    if (!userId) return { success: false, message: "Unauthorized" };
-
-    // Verify admin status
-    const { data: user } = await supabase
-      .from("User")
-      .select("role")
-      .eq("clerkId", userId)
-      .single();
-
-    if (!user || user.role !== "admin") {
-      return { success: false, message: "Only admins can create products" };
-    }
+    await checkAdmin();
 
     const name = formData.get("name") as string;
     const description = formData.get("description") as string;
@@ -32,13 +36,11 @@ export async function createProduct(formData: FormData) {
     const isActive = formData.get("isActive") === "on";
     const mainImage = formData.get("image") as File | null;
     
-    // Parse variants from hidden input (stringified JSON)
     const variantsJson = formData.get("variants") as string;
     const variants = variantsJson ? JSON.parse(variantsJson) : [];
 
     let imageUrl: string | null = null;
 
-    // Handle main image upload
     if (mainImage && mainImage.size > 0) {
       const fileExt = mainImage.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
@@ -56,63 +58,45 @@ export async function createProduct(formData: FormData) {
       }
     }
 
-    // Create product
-    const productId = uuidv4();
-    const { data: product, error: productError } = await supabase
-      .from("Product")
-      .insert({
-        id: productId,
+    const product = await prisma.product.create({
+      data: {
         name,
         description,
         price,
         isActive,
         imageUrl,
-      })
-      .select()
-      .single();
+        variants: {
+          create: await Promise.all(variants.map(async (v: any, i: number) => {
+            let variantImageUrl = null;
+            const variantImage = formData.get(`variantImage_${i}`) as File | null;
 
-    if (productError) throw productError;
+            if (variantImage && variantImage.size > 0) {
+              const fileExt = variantImage.name.split('.').pop();
+              const fileName = `${uuidv4()}.${fileExt}`;
+              const filePath = `products/variants/${fileName}`;
 
-    // Insert variants
-    if (variants.length > 0) {
-      const variantData = [];
-      for (let i = 0; i < variants.length; i++) {
-        const v = variants[i];
-        let variantImageUrl = null;
-        const variantImage = formData.get(`variantImage_${i}`) as File | null;
+              const { error: uploadError } = await supabase.storage
+                .from("products")
+                .upload(filePath, variantImage);
 
-        if (variantImage && variantImage.size > 0) {
-          const fileExt = variantImage.name.split('.').pop();
-          const fileName = `${uuidv4()}.${fileExt}`;
-          const filePath = `products/variants/${fileName}`;
+              if (!uploadError) {
+                const { data: { publicUrl } } = supabase.storage
+                  .from("products")
+                  .getPublicUrl(filePath);
+                variantImageUrl = publicUrl;
+              }
+            }
 
-          const { error: uploadError } = await supabase.storage
-            .from("products")
-            .upload(filePath, variantImage);
-
-          if (!uploadError) {
-            const { data: { publicUrl } } = supabase.storage
-              .from("products")
-              .getPublicUrl(filePath);
-            variantImageUrl = publicUrl;
-          }
+            return {
+              size: v.size,
+              color: v.color,
+              stock: parseInt(v.stock, 10) || 0,
+              imageUrl: variantImageUrl,
+            };
+          }))
         }
-
-        variantData.push({
-          id: uuidv4(),
-          productId,
-          size: v.size,
-          color: v.color,
-          stock: parseInt(v.stock, 10) || 0,
-          imageUrl: variantImageUrl,
-        });
       }
-
-      const { error: variantError } = await supabase
-        .from("ProductVariant")
-        .insert(variantData);
-      if (variantError) console.error("Variant insert error:", variantError);
-    }
+    });
 
     revalidatePath("/admin/products");
     revalidatePath("/");
@@ -125,19 +109,7 @@ export async function createProduct(formData: FormData) {
 
 export async function updateProduct(id: string, formData: FormData) {
   try {
-    const { userId } = await auth();
-    if (!userId) return { success: false, message: "Unauthorized" };
-
-    // Verify admin status
-    const { data: user } = await supabase
-      .from("User")
-      .select("role")
-      .eq("clerkId", userId)
-      .single();
-
-    if (!user || user.role !== "admin") {
-      return { success: false, message: "Only admins can update products" };
-    }
+    await checkAdmin();
 
     const name = formData.get("name") as string;
     const description = formData.get("description") as string;
@@ -167,58 +139,55 @@ export async function updateProduct(id: string, formData: FormData) {
       }
     }
 
-    // Update product
-    const { error: productError } = await supabase
-      .from("Product")
-      .update({ name, description, price, isActive, imageUrl })
-      .eq("id", id);
+    // Use a transaction to update product and replace variants
+    await prisma.$transaction(async (tx) => {
+      await tx.product.update({
+        where: { id },
+        data: { name, description, price, isActive, imageUrl }
+      });
 
-    if (productError) throw productError;
+      // Delete old variants
+      await tx.productVariant.deleteMany({
+        where: { productId: id }
+      });
 
-    // Delete old variants, insert new ones
-    const { error: deleteError } = await supabase.from("ProductVariant").delete().eq("productId", id);
-    if (deleteError) console.error("Variant delete error:", deleteError);
+      // Insert new variants
+      if (variants.length > 0) {
+        const variantData = await Promise.all(variants.map(async (v: any, i: number) => {
+          let variantImageUrl = v.imageUrl || null;
+          const variantImageFile = formData.get(`variantImage_${i}`) as File | null;
 
-    if (variants.length > 0) {
-      const variantData = [];
-      for (let i = 0; i < variants.length; i++) {
-        const v = variants[i];
-        let variantImageUrl = v.imageUrl || null; // Keep existing if no new one provided
-        const variantImageFile = formData.get(`variantImage_${i}`) as File | null;
+          if (variantImageFile && variantImageFile.size > 0) {
+            const fileExt = variantImageFile.name.split('.').pop();
+            const fileName = `${uuidv4()}.${fileExt}`;
+            const filePath = `products/variants/${fileName}`;
 
-        if (variantImageFile && variantImageFile.size > 0) {
-          const fileExt = variantImageFile.name.split('.').pop();
-          const fileName = `${uuidv4()}.${fileExt}`;
-          const filePath = `products/variants/${fileName}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from("products")
-            .upload(filePath, variantImageFile);
-
-          if (!uploadError) {
-            const { data: { publicUrl } } = supabase.storage
+            const { error: uploadError } = await supabase.storage
               .from("products")
-              .getPublicUrl(filePath);
-            variantImageUrl = publicUrl;
-          }
-        }
+              .upload(filePath, variantImageFile);
 
-        variantData.push({
-          id: uuidv4(),
-          productId: id,
-          size: v.size,
-          color: v.color,
-          stock: parseInt(v.stock, 10) || 0,
-          imageUrl: variantImageUrl,
+            if (!uploadError) {
+              const { data: { publicUrl } } = supabase.storage
+                .from("products")
+                .getPublicUrl(filePath);
+              variantImageUrl = publicUrl;
+            }
+          }
+
+          return {
+            productId: id,
+            size: v.size,
+            color: v.color,
+            stock: parseInt(v.stock, 10) || 0,
+            imageUrl: variantImageUrl,
+          };
+        }));
+
+        await tx.productVariant.createMany({
+          data: variantData
         });
       }
-
-      const { error: variantError } = await supabase
-        .from("ProductVariant")
-        .insert(variantData);
-      
-      if (variantError) throw variantError;
-    }
+    });
 
     revalidatePath("/admin/products");
     revalidatePath("/");
@@ -230,50 +199,30 @@ export async function updateProduct(id: string, formData: FormData) {
 }
 
 export async function incrementProductView(id: string) {
-  const { data } = await supabase
-    .from("Product")
-    .select("viewCount")
-    .eq("id", id)
-    .single();
-  
-  if (data) {
-    await supabase
-      .from("Product")
-      .update({ viewCount: (data.viewCount || 0) + 1 })
-      .eq("id", id);
+  try {
+    await prisma.product.update({
+      where: { id },
+      data: { viewCount: { increment: 1 } }
+    });
+  } catch (err) {
+    console.error("Increment view error:", err);
   }
 }
 
 export async function deleteProduct(id: string) {
   try {
-    console.log(`[Admin] Attempting to delete product: ${id}`);
-    const { userId } = await auth();
-    if (!userId) return { success: false, message: "Unauthorized" };
-
-    // Verify admin status
-    const { data: user } = await supabase
-      .from("User")
-      .select("role")
-      .eq("clerkId", userId)
-      .single();
-
-    if (!user || user.role !== "admin") {
-      return { success: false, message: "Only admins can delete products" };
-    }
+    await checkAdmin();
 
     // 1. Get product to find image URLs to delete from storage
-    const { data: product } = await supabase
-      .from("Product")
-      .select("imageUrl, variants:ProductVariant(imageUrl)")
-      .eq("id", id)
-      .single();
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: { variants: true }
+    });
 
     if (product) {
       const imagesToDelete = [];
       if (product.imageUrl) imagesToDelete.push(product.imageUrl);
-      
-      // @ts-ignore
-      product.variants?.forEach((v: any) => {
+      product.variants.forEach((v) => {
         if (v.imageUrl) imagesToDelete.push(v.imageUrl);
       });
 
@@ -289,17 +238,13 @@ export async function deleteProduct(id: string) {
       }
     }
 
-    // 2. Delete the product
-    const { error } = await supabase
-      .from("Product")
-      .delete()
-      .eq("id", id);
-
-    if (error) throw error;
+    // 2. Delete the product (cascade will handle variants if configured, but Prisma delete handles its relations if using delete)
+    // In our schema, we should check if cascade is set. If not, delete variants manually first.
+    await prisma.productVariant.deleteMany({ where: { productId: id } });
+    await prisma.product.delete({ where: { id } });
 
     revalidatePath("/admin/products");
     revalidatePath("/");
-    console.log(`[Admin] Successfully deleted product: ${id}`);
     return { success: true };
   } catch (err: any) {
     console.error("Delete product error:", err);
@@ -309,35 +254,19 @@ export async function deleteProduct(id: string) {
 
 export async function deleteProducts(ids: string[]) {
   try {
-    if (!ids.length) return { success: false, message: "No IDs provided" };
-    console.log(`[Admin] Attempting to delete multiple products: ${ids.length}`);
-
-    const { userId } = await auth();
-    if (!userId) return { success: false, message: "Unauthorized" };
-
-    // Verify admin status
-    const { data: user } = await supabase
-      .from("User")
-      .select("role")
-      .eq("clerkId", userId)
-      .single();
-
-    if (!user || user.role !== "admin") {
-      return { success: false, message: "Only admins can delete products" };
-    }
+    await checkAdmin();
 
     // 1. Get all products to find image URLs to delete from storage
-    const { data: products } = await supabase
-      .from("Product")
-      .select("imageUrl, variants:ProductVariant(imageUrl)")
-      .in("id", ids);
+    const products = await prisma.product.findMany({
+      where: { id: { in: ids } },
+      include: { variants: true }
+    });
 
     if (products && products.length > 0) {
       const imagesToDelete: string[] = [];
       products.forEach(product => {
         if (product.imageUrl) imagesToDelete.push(product.imageUrl);
-        // @ts-ignore
-        product.variants?.forEach((v: any) => {
+        product.variants.forEach((v) => {
           if (v.imageUrl) imagesToDelete.push(v.imageUrl);
         });
       });
@@ -355,16 +284,11 @@ export async function deleteProducts(ids: string[]) {
     }
 
     // 2. Delete the products
-    const { error } = await supabase
-      .from("Product")
-      .delete()
-      .in("id", ids);
-
-    if (error) throw error;
+    await prisma.productVariant.deleteMany({ where: { productId: { in: ids } } });
+    await prisma.product.deleteMany({ where: { id: { in: ids } } });
 
     revalidatePath("/admin/products");
     revalidatePath("/");
-    console.log(`[Admin] Successfully deleted multiple products`);
     return { success: true };
   } catch (err: any) {
     console.error("Delete products error:", err);

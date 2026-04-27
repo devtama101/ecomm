@@ -1,47 +1,49 @@
-import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
 
 export default async function AdminOverviewPage(props: { searchParams?: Promise<{ sort?: string }> }) {
   const searchParams = await props.searchParams;
   const sort = searchParams?.sort || "viewed";
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
   // Fetch total products
-  const { count: productCount } = await supabase
-    .from("Product")
-    .select("*", { count: "exact", head: true });
+  const productCount = await prisma.product.count();
 
   // Fetch total transactions
-  const { count: transactionCount } = await supabase
-    .from("Transaction")
-    .select("*", { count: "exact", head: true });
+  const transactionCount = await prisma.transaction.count();
 
   // Fetch sales from unified transaction items (where transaction is settled)
-  const { data: sales } = await supabase
-    .from("TransactionItem")
-    .select("productId, quantity, transaction:Transaction!inner(status)")
-    .eq("transaction.status", "settlement");
+  const salesItems = await prisma.transactionItem.findMany({
+    where: {
+      transaction: {
+        status: "settlement"
+      }
+    },
+    select: {
+      productId: true,
+      quantity: true
+    }
+  });
 
   const salesCount: Record<string, number> = {};
-  
-  sales?.forEach((s) => {
+  salesItems.forEach((s) => {
     if (s.productId) {
       salesCount[s.productId] = (salesCount[s.productId] || 0) + s.quantity;
     }
   });
 
   // Fetch all products
-  const { data: products } = await supabase
-    .from("Product")
-    .select("id, name, viewCount, price, imageUrl");
+  const products = await prisma.product.findMany({
+    select: {
+      id: true,
+      name: true,
+      viewCount: true,
+      price: true,
+      imageUrl: true
+    }
+  });
 
   // Sort products
-  // Sort products
-  const topProducts = (products || []).map(p => ({
+  const topProducts = products.map(p => ({
     ...p,
     soldCount: salesCount[p.id] || 0
   })).sort((a, b) => {
@@ -58,14 +60,19 @@ export default async function AdminOverviewPage(props: { searchParams?: Promise<
   });
 
   // Fetch visitor data
-  const { data: visits } = await supabase
-    .from("Visit")
-    .select("city, country")
-    .order("createdAt", { ascending: false })
-    .limit(1000);
+  const visits = await prisma.visit.findMany({
+    select: {
+      city: true,
+      country: true
+    },
+    orderBy: {
+      createdAt: 'desc'
+    },
+    take: 1000
+  });
 
   const locationStats: Record<string, number> = {};
-  visits?.forEach(v => {
+  visits.forEach(v => {
     if (v.city && v.country) {
       const key = `${v.city}, ${v.country}`;
       locationStats[key] = (locationStats[key] || 0) + 1;
@@ -76,6 +83,8 @@ export default async function AdminOverviewPage(props: { searchParams?: Promise<
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
+
+  const uniqueCountries = new Set(visits.map(v => v.country).filter(Boolean)).size;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -89,15 +98,15 @@ export default async function AdminOverviewPage(props: { searchParams?: Promise<
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div className="bg-white rounded-3xl p-8 border border-stone-200 shadow-sm flex flex-col justify-center">
           <p className="text-stone-500 font-medium mb-1 text-sm uppercase tracking-wider">Total Products</p>
-          <p className="text-4xl font-black text-stone-900">{productCount || 0}</p>
+          <p className="text-4xl font-black text-stone-900">{productCount}</p>
         </div>
         <div className="bg-white rounded-3xl p-8 border border-stone-200 shadow-sm flex flex-col justify-center">
           <p className="text-stone-500 font-medium mb-1 text-sm uppercase tracking-wider">Total Orders</p>
-          <p className="text-4xl font-black text-stone-900">{transactionCount || 0}</p>
+          <p className="text-4xl font-black text-stone-900">{transactionCount}</p>
         </div>
         <div className="bg-white rounded-3xl p-8 border border-stone-200 shadow-sm flex flex-col justify-center">
           <p className="text-stone-500 font-medium mb-1 text-sm uppercase tracking-wider">Live Visitors</p>
-          <p className="text-4xl font-black text-orange-600">{(visits?.length || 0).toLocaleString()}</p>
+          <p className="text-4xl font-black text-orange-600">{(visits.length).toLocaleString()}</p>
         </div>
       </div>
 
@@ -131,7 +140,7 @@ export default async function AdminOverviewPage(props: { searchParams?: Promise<
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {topProducts?.map((product) => (
+              {topProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-stone-50/50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-4">
@@ -169,7 +178,7 @@ export default async function AdminOverviewPage(props: { searchParams?: Promise<
                 </tr>
               ))}
               
-              {!topProducts?.length && (
+              {!topProducts.length && (
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center text-stone-500 font-medium">
                     No products found.
@@ -205,7 +214,7 @@ export default async function AdminOverviewPage(props: { searchParams?: Promise<
             <div className="relative z-10">
               <h3 className="text-orange-400 text-xs font-black uppercase tracking-[0.2em] mb-2">Global Impact</h3>
               <p className="text-xl font-medium leading-relaxed">
-                Your store is currently reaching customers in <span className="text-white font-black underline decoration-orange-500 underline-offset-4">{new Set(visits?.map(v => v.country)).size} countries</span>.
+                Your store is currently reaching customers in <span className="text-white font-black underline decoration-orange-500 underline-offset-4">{uniqueCountries} countries</span>.
               </p>
             </div>
             {/* Abstract decorative element */}

@@ -1,39 +1,28 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import ProductCard from "@/components/ProductCard";
 
 export default async function StorePage() {
   const { userId } = await auth();
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
   const user = await currentUser();
   let dbUser = null;
-  
   if (userId) {
-    const { data } = await supabase
-      .from("User")
-      .select("role")
-      .eq("clerkId", userId)
-      .single();
-    dbUser = data;
+    dbUser = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      select: { role: true }
+    });
 
     // If logged in but not in DB, create user (Sync)
     if (!dbUser && user) {
       try {
         const email = user.emailAddresses[0].emailAddress;
-        const { data: newUser } = await supabase
-          .from("User")
-          .insert([{ clerkId: userId, email, role: "user" }])
-          .select("role")
-          .single();
-        dbUser = newUser;
+        dbUser = await prisma.user.create({
+          data: { clerkId: userId, email, role: "user" },
+          select: { role: true }
+        });
       } catch (e) {
         console.error("Home sync error:", e);
       }
@@ -46,11 +35,11 @@ export default async function StorePage() {
     redirect("/admin");
   }
 
-  const { data: products } = await supabase
-    .from("Product")
-    .select("*, variants:ProductVariant(*)")
-    .eq("isActive", true)
-    .order("price", { ascending: false });
+  const products = await prisma.product.findMany({
+    where: { isActive: true },
+    include: { variants: true },
+    orderBy: { price: 'desc' }
+  });
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] text-stone-800 selection:bg-orange-200">
@@ -71,7 +60,7 @@ export default async function StorePage() {
           {/* Product Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
             {products?.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product as any} />
             ))}
             
             {!products?.length && (

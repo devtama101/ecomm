@@ -1,38 +1,27 @@
-import { createClient } from "@supabase/supabase-js";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import UserToggle from "./UserToggle";
 import DeleteUserButton from "./DeleteUserButton";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export default async function AdminUsersPage() {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  // Double check admin role
-  const { data: adminCheck } = await supabase
-    .from("User")
-    .select("role")
-    .eq("clerkId", userId)
-    .single();
+  // Double check admin role using Prisma (bypasses RLS)
+  const adminCheck = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { role: true }
+  });
 
   if (!adminCheck || adminCheck.role !== "admin") {
     redirect("/dashboard");
   }
 
-  // Fetch all users
-  const { data: users, error: usersError } = await supabase
-    .from("User")
-    .select("*")
-    .order("createdAt", { ascending: false });
-
-  if (usersError) {
-    console.error("Error fetching users:", usersError);
-  }
+  // Fetch all users using Prisma
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: 'desc' }
+  });
 
   return (
     <div className="space-y-8">
@@ -55,7 +44,7 @@ export default async function AdminUsersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-50">
-            {users?.map((user) => (
+            {users.map((user) => (
               <tr key={user.clerkId} className="hover:bg-stone-50/50 transition-colors">
                 <td className="px-8 py-6">
                   <div className="font-bold text-stone-900">{user.email}</div>

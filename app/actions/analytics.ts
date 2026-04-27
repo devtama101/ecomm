@@ -1,12 +1,7 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
+import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export async function logVisit(data: {
   pathname: string;
@@ -20,18 +15,17 @@ export async function logVisit(data: {
     const ipResponse = await fetch("http://ip-api.com/json/");
     const locationData = await ipResponse.json();
 
-    const { error } = await supabase.from("Visit").insert({
-      clerkId: userId || null,
-      ip: locationData.query,
-      city: locationData.city,
-      region: locationData.regionName,
-      country: locationData.country,
-      pathname: data.pathname,
-      userAgent: data.userAgent,
-      // Simple device/browser detection from userAgent can be added here or on client
+    await prisma.visit.create({
+      data: {
+        clerkId: userId || null,
+        ip: locationData.query || "unknown",
+        city: locationData.city || "unknown",
+        region: locationData.regionName || "unknown",
+        country: locationData.country || "unknown",
+        pathname: data.pathname,
+        userAgent: data.userAgent,
+      }
     });
-
-    if (error) console.error("Analytics Error:", error);
   } catch (err) {
     console.error("Tracking failed:", err);
   }

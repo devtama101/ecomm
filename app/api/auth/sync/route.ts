@@ -13,31 +13,24 @@ export async function POST() {
 
     const email = user.emailAddresses[0].emailAddress;
 
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
     // Check if user exists to preserve role
-    const { data: existingUser } = await supabase
-      .from("User")
-      .select("role")
-      .eq("clerkId", userId)
-      .single();
+    const existingUser = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      select: { role: true }
+    });
 
-    const { error: syncError } = await supabase
-      .from("User")
-      .upsert(
-        { 
-          clerkId: userId, 
-          email, 
-          role: existingUser ? existingUser.role : "user" 
-        },
-        { onConflict: "clerkId" }
-      );
-
-    if (syncError) throw syncError;
+    await prisma.user.upsert({
+      where: { clerkId: userId },
+      update: { 
+        email, 
+        role: existingUser ? existingUser.role : "user" 
+      },
+      create: {
+        clerkId: userId,
+        email,
+        role: "user"
+      }
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

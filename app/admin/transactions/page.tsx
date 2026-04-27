@@ -1,21 +1,21 @@
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { prisma } from "@/lib/prisma";
 
 export default async function AdminTransactionsPage() {
-  const { data: transactions } = await supabase
-    .from("Transaction")
-    .select(`
-      *,
-      user:User(email),
-      items:TransactionItem(
-        product:Product(name)
-      )
-    `)
-    .order("createdAt", { ascending: false });
+  const transactions = await prisma.transaction.findMany({
+    include: {
+      user: {
+        select: { email: true }
+      },
+      items: {
+        include: {
+          product: {
+            select: { name: true }
+          }
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
 
   const normalizedTransactions = (transactions || []).map(tx => ({
     id: tx.id,
@@ -58,7 +58,7 @@ export default async function AdminTransactionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {normalizedTransactions?.map((tx) => (
+              {normalizedTransactions.map((tx) => (
                 <tr key={tx.id} className="hover:bg-stone-50 transition-colors">
                   <td className="px-6 py-4 font-mono text-[10px] text-stone-700">
                     #{tx.orderId.split('-')[0]}...
@@ -86,7 +86,7 @@ export default async function AdminTransactionsPage() {
                   </td>
                 </tr>
               ))}
-              {!normalizedTransactions?.length && (
+              {!normalizedTransactions.length && (
                 <tr>
                   <td colSpan={6} className="px-6 py-24 text-center">
                     <p className="text-stone-400 font-medium italic text-sm">No transactions recorded yet.</p>

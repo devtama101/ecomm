@@ -1,13 +1,8 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
+import { prisma } from "@/lib/prisma";
 import { auth, createClerkClient } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
 
@@ -16,14 +11,13 @@ export async function toggleUserRole(clerkId: string, currentRole: string) {
     const { userId } = await auth();
     if (!userId) return { success: false, message: "Unauthorized" };
 
-    // Check if current user is admin
-    const { data: dbUser } = await supabase
-      .from("User")
-      .select("role")
-      .eq("clerkId", userId)
-      .single();
+    // Check if current user is admin (using Prisma to bypass RLS)
+    const adminUser = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      select: { role: true }
+    });
 
-    if (!dbUser || dbUser.role !== "admin") {
+    if (!adminUser || adminUser.role !== "admin") {
       return { success: false, message: "Only admins can manage roles" };
     }
 
@@ -34,12 +28,10 @@ export async function toggleUserRole(clerkId: string, currentRole: string) {
 
     const newRole = currentRole === "admin" ? "user" : "admin";
 
-    const { error } = await supabase
-      .from("User")
-      .update({ role: newRole })
-      .eq("clerkId", clerkId);
-
-    if (error) throw error;
+    await prisma.user.update({
+      where: { clerkId },
+      data: { role: newRole }
+    });
 
     revalidatePath("/admin/users");
     return { success: true };
@@ -54,12 +46,11 @@ export async function deleteUser(clerkId: string) {
     const { userId } = await auth();
     if (!userId) return { success: false, message: "Unauthorized" };
 
-    // Check if current user is admin
-    const { data: adminUser } = await supabase
-      .from("User")
-      .select("role")
-      .eq("clerkId", userId)
-      .single();
+    // Check if current user is admin (using Prisma to bypass RLS)
+    const adminUser = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      select: { role: true }
+    });
 
     if (!adminUser || adminUser.role !== "admin") {
       return { success: false, message: "Only admins can delete users" };
@@ -78,19 +69,12 @@ export async function deleteUser(clerkId: string) {
       console.log(`[Admin] Successfully deleted user from Clerk: ${clerkId}`);
     } catch (clerkErr: any) {
       console.error(`[Admin] Clerk deletion error for ${clerkId}:`, clerkErr);
-      // Continue even if Clerk fails (e.g. user already deleted in Clerk)
     }
 
     // 2. Delete from our DB
-    const { error } = await supabase
-      .from("User")
-      .delete()
-      .eq("clerkId", clerkId);
-
-    if (error) {
-      console.error(`[Admin] Supabase error deleting user ${clerkId}:`, error);
-      throw error;
-    }
+    await prisma.user.delete({
+      where: { clerkId }
+    });
     
     console.log(`[Admin] Successfully deleted user from DB: ${clerkId}`);
 

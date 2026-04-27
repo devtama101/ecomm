@@ -1,15 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
 import { auth } from "@clerk/nextjs/server";
 import { incrementProductView } from "@/app/actions/product";
 import ProductDetailClient from "@/components/ProductDetailClient";
 import Navbar from "@/components/Navbar";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { prisma } from "@/lib/prisma";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -19,12 +14,11 @@ export default async function ProductPage({ params }: PageProps) {
   const { id } = await params;
   const { userId } = await auth();
 
-  // Get user role for navbar
-  const { data: dbUser } = userId ? await supabase
-    .from("User")
-    .select("role")
-    .eq("clerkId", userId)
-    .single() : { data: null };
+  // Get user role for navbar (using Prisma to bypass RLS)
+  const dbUser = userId ? await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { role: true }
+  }) : null;
 
   const isAdmin = dbUser?.role === "admin";
   
@@ -35,14 +29,12 @@ export default async function ProductPage({ params }: PageProps) {
   // Increment view count
   await incrementProductView(id);
 
-  const { data: product } = await supabase
-    .from("Product")
-    .select(`
-      *,
-      variants:ProductVariant(*)
-    `)
-    .eq("id", id)
-    .single();
+  const product = await prisma.product.findUnique({
+    where: { id },
+    include: {
+      variants: true
+    }
+  });
 
   if (!product) {
     notFound();
@@ -54,7 +46,7 @@ export default async function ProductPage({ params }: PageProps) {
 
       <main className="pt-40 pb-20 px-6">
         <div className="max-w-7xl mx-auto">
-          <ProductDetailClient product={product} />
+          <ProductDetailClient product={product as any} />
         </div>
       </main>
 

@@ -1,9 +1,9 @@
 "use server";
 
 import { currentUser } from "@clerk/nextjs/server";
-import { createClient } from "@supabase/supabase-js";
 import midtransClient from "midtrans-client";
 import { v4 as uuidv4 } from "uuid";
+import { prisma } from "@/lib/prisma";
 
 // Initialize Midtrans Snap client
 const snap = new midtransClient.Snap({
@@ -11,11 +11,6 @@ const snap = new midtransClient.Snap({
   serverKey: process.env.MIDTRANS_SERVER_KEY || "",
   clientKey: process.env.MIDTRANS_CLIENT_KEY || "",
 });
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export async function createSnapTransaction(productId: string) {
   try {
@@ -29,43 +24,28 @@ export async function createSnapTransaction(productId: string) {
     const email = user.emailAddresses[0]?.emailAddress || "";
 
     // 0. Fetch Product to determine the secure price
-    const { data: product, error: productError } = await supabase
-      .from("Product")
-      .select("*")
-      .eq("id", productId)
-      .eq("isActive", true)
-      .single();
+    const product = await prisma.product.findUnique({
+      where: { 
+        id: productId,
+        isActive: true
+      }
+    });
 
-    if (productError || !product) {
+    if (!product) {
       throw new Error("Product not found or inactive.");
     }
 
     const amount = product.price;
 
     // 1. Sync User to our Database
-    let { data: dbUser, error: userError } = await supabase
-      .from("User")
-      .select("*")
-      .eq("clerkId", clerkId)
-      .single();
-
-    if (userError && userError.code !== 'PGRST116') {
-      console.error("Error finding user:", userError);
-      throw new Error("Database error finding user");
-    }
+    let dbUser = await prisma.user.findUnique({
+      where: { clerkId }
+    });
 
     if (!dbUser) {
-      const { data: newUser, error: createError } = await supabase
-        .from("User")
-        .insert([{ clerkId, email }])
-        .select()
-        .single();
-        
-      if (createError) {
-         console.error("Error creating user:", createError);
-         throw new Error("Database error creating user");
-      }
-      dbUser = newUser;
+      dbUser = await prisma.user.create({
+        data: { clerkId, email }
+      });
     }
 
     // 2. Generate unique order_id
@@ -99,38 +79,26 @@ export async function createSnapTransaction(productId: string) {
     const snapToken = midtransTx.token;
 
     // 5. Save Transaction to our Database
-    const { data: tx, error: txError } = await supabase
-      .from("Transaction")
-      .insert([{
+    const tx = await prisma.transaction.create({
+      data: {
         orderId,
         userId: dbUser.id,
         amount,
         status: "pending",
         snapToken,
-      }])
-      .select()
-      .single();
-
-    if (txError || !tx) {
-      console.error("Error creating transaction:", txError);
-      throw new Error("Database error saving transaction");
-    }
+      }
+    });
 
     // 6. Save TransactionItem
-    const { error: tiError } = await supabase
-      .from("TransactionItem")
-      .insert([{
+    await prisma.transactionItem.create({
+      data: {
         transactionId: tx.id,
         productId: product.id,
-        variantId: product.variantId || null,
+        variantId: null, // Single product checkout logic
         quantity: 1,
         price: amount,
-      }]);
-
-    if (tiError) {
-      console.error("Error creating transaction item:", tiError);
-      throw new Error("Database error saving transaction item");
-    }
+      }
+    });
 
     return {
       success: true,
@@ -170,38 +138,24 @@ export async function createMultiItemTransaction(items: CartCheckoutItem[]) {
     const email = user.emailAddresses[0]?.emailAddress || "";
 
     // 1. Sync User to our Database
-    let { data: dbUser, error: userError } = await supabase
-      .from("User")
-      .select("*")
-      .eq("clerkId", clerkId)
-      .single();
-
-    if (userError && userError.code !== "PGRST116") {
-      throw new Error("Database error finding user");
-    }
+    let dbUser = await prisma.user.findUnique({
+      where: { clerkId }
+    });
 
     if (!dbUser) {
-      const { data: newUser, error: createError } = await supabase
-        .from("User")
-        .insert([{ clerkId, email }])
-        .select()
-        .single();
-
-      if (createError) throw new Error("Database error creating user");
-      dbUser = newUser;
+      dbUser = await prisma.user.create({
+        data: { clerkId, email }
+      });
     }
 
     // 2. Fetch all products from DB and validate prices
     const productIds = [...new Set(items.map((i) => i.productId))];
-    const { data: products, error: prodError } = await supabase
-      .from("Product")
-      .select("*")
-      .in("id", productIds)
-      .eq("isActive", true);
-
-    if (prodError || !products) {
-      throw new Error("Failed to fetch products");
-    }
+    const products = await prisma.product.findMany({
+      where: {
+        id: { in: productIds },
+        isActive: true
+      }
+    });
 
     const productMap = new Map(products.map((p) => [p.id, p]));
 
@@ -259,24 +213,15 @@ export async function createMultiItemTransaction(items: CartCheckoutItem[]) {
     const snapToken = midtransTx.token;
 
     // 5. Save Transaction to our Database
-    const { data: tx, error: txError } = await supabase
-      .from("Transaction")
-      .insert([
-        {
-          orderId,
-          userId: dbUser.id,
-          amount: grossAmount,
-          status: "pending",
-          snapToken,
-        },
-      ])
-      .select()
-      .single();
-
-    if (txError || !tx) {
-      console.error("Error creating transaction:", txError);
-      throw new Error("Database error saving transaction");
-    }
+    const tx = await prisma.transaction.create({
+      data: {
+        orderId,
+        userId: dbUser.id,
+        amount: grossAmount,
+        status: "pending",
+        snapToken,
+      }
+    });
 
     // 6. Save TransactionItems
     const transactionItemsToInsert = orderItems.map((oi) => ({
@@ -284,14 +229,9 @@ export async function createMultiItemTransaction(items: CartCheckoutItem[]) {
       transactionId: tx.id,
     }));
 
-    const { error: tiError } = await supabase
-      .from("TransactionItem")
-      .insert(transactionItemsToInsert);
-
-    if (tiError) {
-      console.error("Error creating transaction items:", tiError);
-      throw new Error("Database error saving transaction items");
-    }
+    await prisma.transactionItem.createMany({
+      data: transactionItemsToInsert
+    });
 
     return {
       success: true,

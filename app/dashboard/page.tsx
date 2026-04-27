@@ -1,15 +1,9 @@
 import { UserButton } from '@clerk/nextjs'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import Link from 'next/link'
-import { createClient } from "@supabase/supabase-js"
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import PayButton from '@/components/PayButton'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export default async function DashboardPage() {
   const { userId } = await auth()
@@ -21,37 +15,29 @@ export default async function DashboardPage() {
 
   let dbUser;
   try {
-    // 1. Robust Sync using Supabase
-    // Check if user exists first to preserve role
-    const { data: existingUser } = await supabase
-      .from("User")
-      .select("role")
-      .eq("clerkId", userId)
-      .single();
+    // 1. Robust Sync using Prisma (bypasses RLS)
+    const existingUser = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      select: { role: true, id: true }
+    });
 
-    const { data, error } = await supabase
-      .from("User")
-      .upsert(
-        { 
-          clerkId: userId, 
-          email: user.emailAddresses[0]?.emailAddress || "", 
-          role: existingUser ? existingUser.role : 'user' 
-        }, 
-        { onConflict: 'clerkId' }
-      )
-      .select()
-      .single();
-    dbUser = data;
-    if (!dbUser) throw new Error("Could not sync or find user");
+    dbUser = await prisma.user.upsert({
+      where: { clerkId: userId },
+      update: { 
+        email: user.emailAddresses[0]?.emailAddress || "",
+        role: existingUser ? existingUser.role : 'user'
+      },
+      create: {
+        clerkId: userId,
+        email: user.emailAddresses[0]?.emailAddress || "",
+        role: 'user'
+      }
+    });
   } catch (syncError) {
     console.error("[Dashboard] Sync error:", syncError);
-    // Fallback: try to find user
-    const { data: existingUser } = await supabase
-      .from("User")
-      .select("*")
-      .eq("clerkId", userId)
-      .single();
-    dbUser = existingUser;
+    dbUser = await prisma.user.findUnique({
+      where: { clerkId: userId }
+    });
     if (!dbUser) throw new Error("Could not find user after sync error");
   }
 
@@ -61,21 +47,18 @@ export default async function DashboardPage() {
 
   let transactions = [];
   try {
-    // 2. Fetch Transactions using Supabase with unified items
-    const { data, error } = await supabase
-      .from("Transaction")
-      .select(`
-        *,
-        items:TransactionItem(
-          *,
-          product:Product(*)
-        )
-      `)
-      .eq("userId", dbUser.id)
-      .order("createdAt", { ascending: false });
-    
-    if (error) throw error;
-    transactions = data || [];
+    // 2. Fetch Transactions using Prisma (bypasses RLS)
+    transactions = await prisma.transaction.findMany({
+      where: { userId: dbUser.id },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
   } catch (fetchError) {
     console.error("[Dashboard] Fetch error:", fetchError);
   }
