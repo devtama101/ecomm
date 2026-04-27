@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import ProductCard from "@/components/ProductCard";
 
+export const dynamic = "force-dynamic";
+
 export default async function StorePage() {
   let userId: string | null = null;
   let isAdmin = false;

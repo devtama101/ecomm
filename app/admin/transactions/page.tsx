@@ -1,33 +1,42 @@
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminTransactionsPage() {
-  const transactions = await prisma.transaction.findMany({
-    include: {
-      user: {
-        select: { email: true }
-      },
-      items: {
-        include: {
-          product: {
-            select: { name: true }
+  let normalizedTransactions: any[] = [];
+  
+  try {
+    const transactions = await prisma.transaction.findMany({
+      include: {
+        user: {
+          select: { email: true }
+        },
+        items: {
+          include: {
+            product: {
+              select: { name: true }
+            }
           }
         }
-      }
-    },
-    orderBy: { createdAt: 'desc' }
-  });
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
-  const normalizedTransactions = (transactions || []).map(tx => ({
-    id: tx.id,
-    orderId: tx.orderId,
-    email: tx.user?.email || "Unknown",
-    productName: tx.items?.length > 1 
-      ? `${tx.items[0]?.product?.name} (+${tx.items.length - 1} more)`
-      : tx.items?.[0]?.product?.name || "No items",
-    amount: tx.amount,
-    status: tx.status,
-    createdAt: tx.createdAt
-  }));
+    normalizedTransactions = (transactions || []).map(tx => ({
+      id: tx.id,
+      orderId: tx.orderId,
+      email: tx.user?.email || "Unknown",
+      productName: tx.items?.length > 1 
+        ? `${tx.items[0]?.product?.name} (+${tx.items.length - 1} more)`
+        : tx.items?.[0]?.product?.name || "No items",
+      amount: tx.amount,
+      status: tx.status,
+      createdAt: tx.createdAt
+    }));
+  } catch (error) {
+    console.error("Admin Transactions Page Error:", error);
+    normalizedTransactions = [];
+  }
 
   return (
     <div className="space-y-6">
