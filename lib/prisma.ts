@@ -2,18 +2,18 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
 
 if (!connectionString) {
-  console.warn("DATABASE_URL is not set. Prisma will fail if used.");
+  console.warn("Neither DIRECT_URL nor DATABASE_URL is set. Prisma will fail if used.");
 }
 
 const pool = new Pool({ 
   connectionString: connectionString || "",
-  // Add some safety for serverless
+  // We use our own pooling (max 10) which is safe for Vercel
   max: 10,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 5000, // Slightly longer for direct connections
 });
 
 const adapter = new PrismaPg(pool);
