@@ -254,4 +254,3 @@ export default async function AdminOverviewPage(props: { searchParams?: Promise<
     );
   }
 }
-}
