@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { ADMIN_EMAILS } from "@/lib/constants";
 import Navbar from "@/components/Navbar";
 import ProductCard from "@/components/ProductCard";
 
@@ -23,8 +24,7 @@ export default async function StorePage() {
     
     if (userId && user) {
       const email = user.emailAddresses?.[0]?.emailAddress || "";
-      const adminEmails = ['pro.taufikur@gmail.com', 'dev.tama101@gmail.com'];
-      const isHardcodedAdmin = adminEmails.includes(email);
+      const isHardcodedAdmin = ADMIN_EMAILS.includes(email);
 
       // 2. Fetch User from Prisma
       try {

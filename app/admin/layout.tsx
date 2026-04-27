@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { ADMIN_EMAILS } from "@/lib/constants";
 import AdminNavbar from "@/components/admin/AdminNavbar";
 
 export default async function AdminLayout({
@@ -18,8 +19,7 @@ export default async function AdminLayout({
     }
 
     const email = user.emailAddresses[0]?.emailAddress || "";
-    const adminEmails = ['pro.taufikur@gmail.com', 'dev.tama101@gmail.com'];
-    const isHardcodedAdmin = adminEmails.includes(email);
+    const isHardcodedAdmin = ADMIN_EMAILS.includes(email);
 
     // Check user role from database using Prisma (bypasses RLS)
     let dbUser = null;

@@ -1,27 +1,62 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { ADMIN_EMAILS } from "@/lib/constants";
 import UserToggle from "./UserToggle";
 import DeleteUserButton from "./DeleteUserButton";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminUsersPage() {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  let userId: string | null = null;
+  let users: any[] = [];
 
-  // Double check admin role using Prisma (bypasses RLS)
-  const adminCheck = await prisma.user.findUnique({
-    where: { clerkId: userId },
-    select: { role: true }
-  });
+  try {
+    const authResult = await auth();
+    userId = authResult.userId;
+    const user = await currentUser();
 
-  if (!adminCheck || adminCheck.role !== "admin") {
-    redirect("/dashboard");
+    if (!userId || !user) {
+      redirect("/sign-in");
+    }
+
+    const email = user.emailAddresses[0]?.emailAddress || "";
+    const isHardcodedAdmin = ADMIN_EMAILS.includes(email);
+
+    // Double check admin role using Prisma (bypasses RLS)
+    let dbUser = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      select: { role: true }
+    });
+
+    // AUTO-PROMOTION: Force admin role if email matches
+    if (isHardcodedAdmin && dbUser?.role !== "admin") {
+      dbUser = await prisma.user.upsert({
+        where: { clerkId: userId },
+        update: { role: "admin" },
+        create: { clerkId: userId, email, role: "admin" },
+        select: { role: true }
+      });
+    }
+
+    if (!isHardcodedAdmin && (!dbUser || dbUser.role !== "admin")) {
+      redirect("/dashboard");
+    }
+
+    // Fetch all users using Prisma
+    users = await prisma.user.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
+      throw error;
+    }
+    console.error("Admin Users Page Error:", error);
+    // Fallback UI or empty list
+    users = [];
   }
 
-  // Fetch all users using Prisma
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: 'desc' }
-  });
+  const currentUserId = userId; // To avoid closure issues if any
 
   return (
     <div className="space-y-8">

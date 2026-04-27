@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { ADMIN_EMAILS } from "@/lib/constants";
 import { NextResponse } from "next/server";
 
 export async function POST() {
@@ -16,8 +17,8 @@ export async function POST() {
       return NextResponse.json({ message: "Email not found" }, { status: 400 });
     }
 
-    const adminEmails = ['pro.taufikur@gmail.com', 'dev.tama101@gmail.com'];
-    const targetRole = adminEmails.includes(email) ? 'admin' : 'user';
+    const isHardcodedAdmin = ADMIN_EMAILS.includes(email);
+    const targetRole = isHardcodedAdmin ? 'admin' : 'user';
 
     // Check if user exists to preserve role (unless promoting to admin)
     const existingUser = await prisma.user.findUnique({
@@ -29,7 +30,7 @@ export async function POST() {
       where: { clerkId: userId },
       update: { 
         email, 
-        role: adminEmails.includes(email) ? 'admin' : (existingUser?.role || 'user')
+        role: isHardcodedAdmin ? 'admin' : (existingUser?.role || 'user')
       },
       create: {
         clerkId: userId,

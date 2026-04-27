@@ -3,6 +3,7 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
+import { ADMIN_EMAILS } from '@/lib/constants'
 import PayButton from '@/components/PayButton'
 
 export default async function DashboardPage() {
@@ -23,8 +24,8 @@ export default async function DashboardPage() {
     // 1. Robust Sync using Prisma
     try {
       const email = user.emailAddresses[0]?.emailAddress || "";
-      const adminEmails = ['pro.taufikur@gmail.com', 'dev.tama101@gmail.com'];
-      const targetRole = adminEmails.includes(email) ? 'admin' : 'user';
+      const isHardcodedAdmin = ADMIN_EMAILS.includes(email);
+      const targetRole = isHardcodedAdmin ? 'admin' : 'user';
 
       const existingUser = await prisma.user.findUnique({
         where: { clerkId: userId },
@@ -35,7 +36,7 @@ export default async function DashboardPage() {
         where: { clerkId: userId },
         update: { 
           email: email,
-          role: existingUser ? (adminEmails.includes(email) ? 'admin' : existingUser.role) : targetRole
+          role: existingUser ? (isHardcodedAdmin ? 'admin' : existingUser.role) : targetRole
         },
         create: {
           clerkId: userId,
