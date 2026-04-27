@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import AdminNavbar from "@/components/admin/AdminNavbar";
@@ -11,10 +11,15 @@ export default async function AdminLayout({
   try {
     const authResult = await auth();
     const userId = authResult.userId;
+    const user = await currentUser();
 
-    if (!userId) {
+    if (!userId || !user) {
       redirect("/sign-in");
     }
+
+    const email = user.emailAddresses[0]?.emailAddress || "";
+    const adminEmails = ['pro.taufikur@gmail.com', 'dev.tama101@gmail.com'];
+    const isHardcodedAdmin = adminEmails.includes(email);
 
     // Check user role from database using Prisma (bypasses RLS)
     let dbUser = null;
@@ -23,13 +28,25 @@ export default async function AdminLayout({
         where: { clerkId: userId },
         select: { role: true },
       });
+
+      // AUTO-PROMOTION: If email is in admin list but role is not admin, FIX IT NOW
+      if (isHardcodedAdmin && dbUser?.role !== "admin") {
+        dbUser = await prisma.user.upsert({
+          where: { clerkId: userId },
+          update: { role: "admin" },
+          create: { clerkId: userId, email, role: "admin" },
+          select: { role: true }
+        });
+      }
     } catch (dbErr) {
       console.error("Admin Layout DB Error:", dbErr);
-      // If DB fails, we can't verify admin status, so we must redirect to safe area
-      redirect("/dashboard");
+      // If DB fails but user is a hardcoded admin, let them through
+      if (!isHardcodedAdmin) {
+        redirect("/dashboard");
+      }
     }
 
-    if (!dbUser || dbUser.role !== "admin") {
+    if (!isHardcodedAdmin && (!dbUser || dbUser.role !== "admin")) {
       // If not admin, redirect to normal dashboard
       redirect("/dashboard");
     }

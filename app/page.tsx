@@ -17,9 +17,13 @@ export default async function StorePage() {
     const authResult = await auth();
     userId = authResult.userId;
 
-    const user = await currentUser();
+    isAdmin = false;
+    
+    if (userId && user) {
+      const email = user.emailAddresses?.[0]?.emailAddress || "";
+      const adminEmails = ['pro.taufikur@gmail.com', 'dev.tama101@gmail.com'];
+      const isHardcodedAdmin = adminEmails.includes(email);
 
-    if (userId) {
       // 2. Fetch User from Prisma
       try {
         dbUser = await prisma.user.findUnique({
@@ -27,23 +31,21 @@ export default async function StorePage() {
           select: { role: true }
         });
 
-        // 3. Sync user if missing
-        if (!dbUser && user) {
-          const email = user.emailAddresses?.[0]?.emailAddress;
-          if (email) {
-            dbUser = await prisma.user.create({
-              data: { clerkId: userId, email, role: "user" },
-              select: { role: true }
-            });
-          }
+        // AUTO-PROMOTION: Force admin role in DB if email matches
+        if (isHardcodedAdmin && dbUser?.role !== "admin") {
+          dbUser = await prisma.user.upsert({
+            where: { clerkId: userId },
+            update: { role: "admin" },
+            create: { clerkId: userId, email, role: "admin" },
+            select: { role: true }
+          });
         }
       } catch (dbErr) {
         console.error("Home Page DB User Error:", dbErr);
-        // Continue even if user fetch fails, they just won't have a role
       }
-    }
 
-    isAdmin = dbUser?.role === "admin";
+      isAdmin = isHardcodedAdmin || dbUser?.role === "admin";
+    }
     
     if (isAdmin) {
       redirect("/admin");
