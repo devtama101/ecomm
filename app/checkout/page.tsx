@@ -18,5 +18,9 @@ export default async function CheckoutPage() {
     }
   }
 
-  return <CheckoutClient />;
+  // Fetch Brand Settings
+  const settings = await prisma.siteSettings.findUnique({ where: { id: "global" } });
+  const brandName = settings?.brandName || "Tama Arts";
+
+  return <CheckoutClient brandName={brandName} />;
 }

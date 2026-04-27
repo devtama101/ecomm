@@ -9,9 +9,10 @@ import CartSidebar from "./CartSidebar";
 interface NavbarProps {
   userId: string | null;
   isAdmin: boolean;
+  brandName?: string;
 }
 
-export default function Navbar({ userId, isAdmin }: NavbarProps) {
+export default function Navbar({ userId, isAdmin, brandName = "Tama Arts" }: NavbarProps) {
   const [cartOpen, setCartOpen] = useState(false);
 
   return (
@@ -22,7 +23,7 @@ export default function Navbar({ userId, isAdmin }: NavbarProps) {
             href={isAdmin ? "/admin" : "/"}
             className="text-2xl font-black tracking-tighter text-stone-900 uppercase"
           >
-            Tama Arts
+            {brandName}
           </Link>
 
           <div className="flex items-center gap-6 text-sm font-medium text-stone-500">

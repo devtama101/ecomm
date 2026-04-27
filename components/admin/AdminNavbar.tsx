@@ -14,6 +14,8 @@ export default function AdminNavbar() {
     { href: "/admin/products", label: "Products" },
     { href: "/admin/transactions", label: "Transactions" },
     { href: "/admin/users", label: "Users" },
+    { href: "/admin/cms", label: "CMS" },
+    { href: "/admin/settings", label: "Settings" },
   ];
 
   return (

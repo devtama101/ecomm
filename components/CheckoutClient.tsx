@@ -13,7 +13,7 @@ declare global {
   }
 }
 
-export default function CheckoutClient() {
+export default function CheckoutClient({ brandName = "Tama Arts" }: { brandName?: string }) {
   const items = useCartStore((s) => s.items);
   const getTotal = useCartStore((s) => s.getTotal);
   const clearCart = useCartStore((s) => s.clearCart);
@@ -84,7 +84,7 @@ export default function CheckoutClient() {
         <nav className="fixed top-0 w-full z-50 border-b border-stone-200 bg-[#fdfbf7]/80 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-6 h-20 flex items-center">
             <Link href="/" className="text-2xl font-black tracking-tighter text-stone-900 uppercase">
-              Tama Arts
+              {brandName}
             </Link>
           </div>
         </nav>
@@ -108,7 +108,7 @@ export default function CheckoutClient() {
       <nav className="fixed top-0 w-full z-50 border-b border-stone-200 bg-[#fdfbf7]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <Link href="/" className="text-2xl font-black tracking-tighter text-stone-900 uppercase">
-            Tama Arts
+            {brandName}
           </Link>
           <Link href="/" className="text-sm font-semibold text-stone-400 hover:text-stone-900 transition-colors">
             ← Back to Store

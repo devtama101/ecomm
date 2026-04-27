@@ -1,5 +1,6 @@
 import { ClerkProvider } from '@clerk/nextjs'
 import Script from 'next/script'
+import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
@@ -18,10 +19,24 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Devtama Store",
-  description: "Secure and beautiful e-commerce experience.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const settings = await prisma.siteSettings.findUnique({ where: { id: "global" } });
+    return {
+      title: {
+        default: settings?.metaTitle || "Tama Arts",
+        template: `%s | ${settings?.brandName || "Tama Arts"}`,
+      },
+      description: settings?.metaDescription || "Artisan Clothing Collection",
+      icons: settings?.faviconUrl ? { icon: settings.faviconUrl } : undefined,
+    };
+  } catch (error) {
+    return {
+      title: "Tama Arts",
+      description: "Artisan Clothing Collection",
+    };
+  }
+}
 
 export default function RootLayout({
   children,

@@ -97,3 +97,31 @@ model Visit {
   userAgent String?
   createdAt DateTime @default(now())
 }
+
+model SiteSettings {
+  id               String   @id @default("global")
+  brandName        String   @default("Tama Arts")
+  logoUrl          String?
+  faviconUrl       String?
+  metaTitle        String   @default("Tama Arts | Artisan Clothing")
+  metaDescription  String   @default("Discover our curated selection of premium garments.")
+  whatsappNumber   String?  @default("628123456789")
+  whatsappMessage  String?  @default("Halo, saya tertarik dengan produk Anda.")
+  contactEmail     String?
+  socialInstagram  String?
+  socialTwitter    String?
+  primaryColor     String   @default("#000000")
+  updatedAt        DateTime @updatedAt
+}
+
+model PageContent {
+  id        String   @id @default(uuid())
+  page      String   @default("home") // e.g. "home", "about"
+  section   String // e.g. "hero", "about_story", "features"
+  key       String // e.g. "title", "subtitle", "image_url", "content"
+  value     String   @db.Text
+  order     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([page, section, key])
+}

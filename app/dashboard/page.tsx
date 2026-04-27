@@ -74,12 +74,16 @@ export default async function DashboardPage() {
       transactions = [];
     }
 
+    // 3. Fetch Brand Settings
+    const settings = await prisma.siteSettings.findUnique({ where: { id: "global" } });
+    const brandName = settings?.brandName || "Tama Arts";
+
     return (
       <div className="min-h-screen bg-[#fdfbf7] text-stone-800 selection:bg-orange-500/30">
         <nav className="w-full border-b border-stone-200 bg-white/80 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-            <Link href="/" className="text-2xl font-black tracking-tighter text-stone-900">
-              TAMA ARTS
+            <Link href="/" className="text-2xl font-black tracking-tighter text-stone-900 uppercase">
+              {brandName}
             </Link>
             <div className="flex items-center gap-6">
               <Link href="/" className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors">Store</Link>
