@@ -12,12 +12,8 @@ export async function POST() {
       return NextResponse.json({ message: "Not authenticated" }, { status: 401 });
     }
 
-    const email = user.emailAddresses[0]?.emailAddress || "";
-    if (!email) {
-      return NextResponse.json({ message: "Email not found" }, { status: 400 });
-    }
-
-    const isHardcodedAdmin = ADMIN_EMAILS.includes(email);
+    const emails = user.emailAddresses.map(e => e.emailAddress.toLowerCase().trim());
+    const isHardcodedAdmin = emails.some(email => ADMIN_EMAILS.map(a => a.toLowerCase().trim()).includes(email));
     const targetRole = isHardcodedAdmin ? 'admin' : 'user';
 
     // Check if user exists to preserve role (unless promoting to admin)
@@ -26,15 +22,16 @@ export async function POST() {
       select: { role: true }
     });
 
+    const primaryEmail = emails[0] || "";
     await prisma.user.upsert({
       where: { clerkId: userId },
       update: { 
-        email, 
+        email: primaryEmail, 
         role: isHardcodedAdmin ? 'admin' : (existingUser?.role || 'user')
       },
       create: {
         clerkId: userId,
-        email,
+        email: primaryEmail,
         role: targetRole
       }
     });

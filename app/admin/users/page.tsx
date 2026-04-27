@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminUsersPage() {
   let userId: string | null = null;
   let users: any[] = [];
+  let error: string | null = null;
 
   try {
     const authResult = await auth();
@@ -20,54 +21,66 @@ export default async function AdminUsersPage() {
       redirect("/sign-in");
     }
 
-    const email = user.emailAddresses[0]?.emailAddress || "";
-    const isHardcodedAdmin = ADMIN_EMAILS.includes(email);
+    const emails = user.emailAddresses.map(e => e.emailAddress.toLowerCase().trim());
+    const isHardcodedAdmin = emails.some(email => ADMIN_EMAILS.map(a => a.toLowerCase().trim()).includes(email));
 
-    // Double check admin role using Prisma (bypasses RLS)
-    let dbUser = await prisma.user.findUnique({
-      where: { clerkId: userId },
-      select: { role: true }
-    });
+    // Check user role from database using Prisma (bypasses RLS)
+    let dbUser = null;
 
-    // AUTO-PROMOTION: Force admin role if email matches
-    if (isHardcodedAdmin && dbUser?.role !== "admin") {
-      dbUser = await prisma.user.upsert({
-        where: { clerkId: userId },
-        update: { role: "admin" },
-        create: { clerkId: userId, email, role: "admin" },
-        select: { role: true }
-      });
+    if (!isHardcodedAdmin) {
+      redirect("/dashboard");
     }
 
-    if (!isHardcodedAdmin && (!dbUser || dbUser.role !== "admin")) {
-      redirect("/dashboard");
+    // Auto-promote if admin email but role is not admin
+    try {
+      const primaryEmail = emails[0] || "";
+      await prisma.user.upsert({
+        where: { clerkId: userId },
+        update: { role: "admin" },
+        create: {
+          clerkId: userId,
+          email: primaryEmail,
+          role: "admin",
+        },
+      });
+    } catch (e) {
+      console.error("Auto-promotion failed in Users page:", e);
     }
 
     // Fetch all users using Prisma
     users = await prisma.user.findMany({
       orderBy: { createdAt: 'desc' }
     });
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
-      throw error;
+  } catch (err: any) {
+    console.error("Admin Users Page Error:", err);
+    if (err.message?.includes('NEXT_REDIRECT')) {
+      throw err;
     }
-    console.error("Admin Users Page Error:", error);
-    // Fallback UI or empty list
+    error = err.message || "An unknown error occurred while fetching users.";
     users = [];
   }
 
-  const currentUserId = userId; // To avoid closure issues if any
-
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-end">
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-4xl font-black text-stone-900 tracking-tight">User Management</h1>
-          <p className="text-stone-500 font-medium mt-2">Manage administrative access and user accounts.</p>
+          <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+          <p className="text-gray-500 mt-1">Manage and view all registered users</p>
+        </div>
+        <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium">
+          Total Users: {users.length}
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl overflow-hidden border border-stone-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <h3 className="text-red-800 font-semibold mb-1">Database Connection Error</h3>
+          <p className="text-red-600 text-sm">{error}</p>
+          <p className="text-red-500 text-xs mt-2 italic">Note: This error usually occurs when the database pooler (Supavisor) is under heavy load or misconfigured.</p>
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-stone-200 scrollbar-track-transparent">
           <table className="w-full text-left border-collapse min-w-[800px]">
           <thead>

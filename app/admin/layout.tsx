@@ -18,8 +18,8 @@ export default async function AdminLayout({
       redirect("/sign-in");
     }
 
-    const email = user.emailAddresses[0]?.emailAddress || "";
-    const isHardcodedAdmin = ADMIN_EMAILS.includes(email);
+    const emails = user.emailAddresses.map(e => e.emailAddress.toLowerCase().trim());
+    const isHardcodedAdmin = emails.some(email => ADMIN_EMAILS.map(a => a.toLowerCase().trim()).includes(email));
 
     // Check user role from database using Prisma (bypasses RLS)
     let dbUser = null;

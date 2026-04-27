@@ -23,8 +23,8 @@ export default async function StorePage() {
     isAdmin = false;
     
     if (userId && user) {
-      const email = user.emailAddresses?.[0]?.emailAddress || "";
-      const isHardcodedAdmin = ADMIN_EMAILS.includes(email);
+      const emails = user.emailAddresses.map(e => e.emailAddress.toLowerCase().trim());
+      const isHardcodedAdmin = emails.some(email => ADMIN_EMAILS.map(a => a.toLowerCase().trim()).includes(email));
 
       // 2. Fetch User from Prisma
       try {
