@@ -100,3 +100,7 @@ To access the admin features at `/admin`, your user account must have the `ADMIN
 
 ## 📈 Development Workflow
 For an in-depth look at our development methodology and optimized phase ordering, please refer to the [Revised Planning Documentation](docs/revised-planning/README.md).
+
+### Important Documentation
+- [Architectural Decisions](docs/decisions/ADMIN_AND_DB_REFACTOR.md) — Why we use Prisma 7 in a specific way and how Admin roles work.
+- [Learnings & Troubleshooting](docs/LEARNINGS.md) — Critical gotchas for Vercel, Prisma, and Supabase.
